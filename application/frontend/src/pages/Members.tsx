@@ -183,7 +183,7 @@ export default function Members() {
     setGuardians((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   }
 
-  async function save(e: FormEvent) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttempted)) return;
     setError(null);
     const monthlyFee = parseMoney(form.monthlyFee);
@@ -237,7 +237,7 @@ export default function Members() {
     toast.success("Associado alterado com sucesso.");
   }
 
-  async function addAccount(e: FormEvent) {
+  async function addAccount(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttemptedAccount)) return;
     if (!accountsOf) return;
     setSavingAccount(true);

@@ -324,7 +324,7 @@ export default function CashFlow() {
     setOpen(true);
   }
 
-  async function onSave(e: FormEvent) {
+  async function onSave(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttempted)) return;
     setError(null);
     const amount = parseMoney(form.amount);

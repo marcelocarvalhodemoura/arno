@@ -14,7 +14,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [attempted, setAttempted] = useState(false);
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttempted)) return;
     setBusy(true);
     setError(null);

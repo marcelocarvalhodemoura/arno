@@ -47,7 +47,7 @@ export default function Projects() {
   );
   const listing = usePagedList(itemRows, `${project?.id ?? ""}|${query}|${branch}|${year}`);
 
-  async function save(e: FormEvent) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttempted)) return;
     if (!editing) return;
     setSaving(true);

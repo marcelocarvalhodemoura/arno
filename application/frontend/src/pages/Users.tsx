@@ -62,7 +62,7 @@ export default function Users() {
   );
   const listing = usePagedList(filtered, [query, roleFilter, statusFilter].join("|"));
 
-  async function create(e: FormEvent) {
+  async function create(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttempted)) return;
     setError(null);
     setSaving(true);

@@ -69,7 +69,7 @@ export default function Fees() {
     setAttempted(false);
   }
 
-  async function save(e: FormEvent) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttempted)) return;
     setError(null);
     const amount = parseMoney(form.amount);

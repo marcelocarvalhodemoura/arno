@@ -56,7 +56,7 @@ export default function MovementTypes() {
   );
   const listing = usePagedList(filtered, [query, directionFilter, statusFilter].join("|"));
 
-  async function create(e: FormEvent) {
+  async function create(e: FormEvent<HTMLFormElement>) {
     if (!submitAttempt(e, setAttempted)) return;
     setError(null);
     setSaving(true);

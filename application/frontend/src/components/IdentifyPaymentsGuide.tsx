@@ -1,10 +1,18 @@
+import { useState } from "react";
+
 type Props = {
   defaultOpen?: boolean;
 };
 
 export default function IdentifyPaymentsGuide({ defaultOpen = false }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
-    <details className="guide" defaultOpen={defaultOpen}>
+    <details
+      className="guide"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary>O jeito certo de identificar um pagamento</summary>
       <p>
         O saldo do grupo só é confiável com o crédito no banco. Mensalidade, produto de
