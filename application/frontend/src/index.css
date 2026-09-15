@@ -836,6 +836,11 @@ table.data tr.is-overdue td {
   display: none;
 }
 
+@page {
+  size: A4 portrait;
+  margin: 12mm 10mm 14mm;
+}
+
 @media print {
   .sidebar,
   .topbar,
@@ -844,8 +849,16 @@ table.data tr.is-overdue td {
   .loading-bar,
   .fetch-overlay,
   .icon-btn__tip,
-  .toasts {
+  .toasts,
+  .filters,
+  .pager {
     display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #101418;
   }
 
   .shell {
@@ -860,8 +873,8 @@ table.data tr.is-overdue td {
     display: block;
   }
 
-  .report-letterhead {
-    margin-bottom: 18px;
+  caption.print-only {
+    display: table-caption;
   }
 
   .card {
@@ -870,10 +883,295 @@ table.data tr.is-overdue td {
     break-inside: avoid;
   }
 
-  .ledger td,
-  .ledger th {
-    font-size: 0.78rem;
-    padding: 6px 8px;
+  /* Prestação de contas: o timbre e as tabelas substituem os cartões da tela. */
+  .fiscal-report {
+    font-size: 9.5pt;
+  }
+
+  .fiscal-report .page-head,
+  .fiscal-report .card > h3 {
+    display: none;
+  }
+
+  .fiscal-report .card {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0 0 12pt;
+    break-inside: auto;
+  }
+
+  .fiscal-report .table-wrap,
+  .fiscal-report .listing-results {
+    overflow: visible;
+  }
+
+  .report-letterhead {
+    width: 100%;
+    border-collapse: collapse;
+    border-bottom: 2.5pt solid var(--forest);
+    margin-bottom: 10pt;
+  }
+
+  .report-letterhead td {
+    padding: 0 8pt 8pt;
+    vertical-align: middle;
+    border: 0;
+  }
+
+  .report-letterhead__brand {
+    width: 76pt;
+    padding-left: 0;
+  }
+
+  .report-letterhead__brand img {
+    display: block;
+    width: 76pt;
+    height: auto;
+  }
+
+  .report-letterhead__id strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 15pt;
+    line-height: 1.1;
+    color: var(--forest);
+  }
+
+  .report-letterhead__id span,
+  .report-letterhead__id em {
+    display: block;
+    font-size: 8.5pt;
+    color: #3d4757;
+  }
+
+  .report-letterhead__id em {
+    margin-top: 3pt;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--clay);
+  }
+
+  .report-letterhead__period {
+    width: 150pt;
+    padding-right: 0;
+    text-align: right;
+  }
+
+  .report-letterhead__period span {
+    display: block;
+    font-size: 7.4pt;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #5a5f6a;
+  }
+
+  .report-letterhead__period strong {
+    display: block;
+    margin: 2pt 0;
+    font-size: 10.5pt;
+    color: var(--forest);
+  }
+
+  table.data,
+  table.data th,
+  table.data td,
+  .report-letterhead,
+  .report-letterhead img,
+  .report-footer__mark img {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  table.data {
+    width: 100%;
+    border: 0.75pt solid #9aa6bd;
+    border-collapse: collapse;
+    font-size: 8.6pt;
+  }
+
+  table.data thead {
+    display: table-header-group;
+  }
+
+  table.data tfoot {
+    display: table-footer-group;
+  }
+
+  table.data caption {
+    caption-side: top;
+    padding: 0 0 4pt;
+    font-family: var(--font-display);
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--forest);
+  }
+
+  table.data th {
+    padding: 4pt 5pt;
+    border: 0.75pt solid #9aa6bd;
+    background: #e7edf7;
+    color: var(--forest);
+    font-size: 7.6pt;
+  }
+
+  table.data td {
+    padding: 4pt 5pt;
+    border: 0.5pt solid #c2cbdc;
+    vertical-align: top;
+  }
+
+  table.data tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  table.data tbody tr:nth-child(even) td {
+    background: #f4f6fb;
+  }
+
+  table.data tr.is-opening td,
+  table.data tr.is-total td {
+    background: #dfe7f5;
+    border-top: 1pt solid var(--forest);
+    font-weight: 700;
+  }
+
+  .report-meta {
+    margin-bottom: 10pt;
+  }
+
+  .report-meta th {
+    width: 82pt;
+    text-align: left;
+  }
+
+  .report-balance {
+    margin-bottom: 14pt;
+  }
+
+  .report-balance td {
+    font-size: 10pt;
+  }
+
+  .ledger {
+    table-layout: fixed;
+  }
+
+  .ledger td {
+    overflow-wrap: anywhere;
+  }
+
+  .ledger th:nth-child(1) {
+    width: 22pt;
+  }
+
+  .ledger th:nth-child(2) {
+    width: 46pt;
+  }
+
+  .ledger th:nth-child(4) {
+    width: 42pt;
+  }
+
+  .ledger th:nth-child(5) {
+    width: 46pt;
+  }
+
+  .ledger th:nth-child(6),
+  .ledger th:nth-child(7),
+  .ledger th:nth-child(8) {
+    width: 54pt;
+  }
+
+  .ledger .muted {
+    font-size: 7.4pt;
+  }
+
+  .ledger .tx-stamp {
+    display: block;
+    margin-top: 2pt;
+    padding: 0;
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: 6.8pt;
+    white-space: normal;
+  }
+
+  .ledger .tx-stamp strong,
+  .ledger .tx-stamp span {
+    display: inline;
+    font-weight: 400;
+    color: #5a5f6a;
+  }
+
+  .ledger .tx-stamp__origin {
+    padding: 0;
+    background: transparent;
+    font-size: 6.8pt;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .report-closing {
+    break-inside: avoid;
+  }
+
+  .report-signatures {
+    margin-top: 16pt;
+  }
+
+  .report-signatures th,
+  .report-signatures td {
+    text-align: center;
+    width: 33.33%;
+  }
+
+  .report-signatures__space td {
+    height: 46pt;
+  }
+
+  table.data.report-signatures tbody td {
+    background: #fff;
+  }
+
+  table.data.report-signatures .report-signatures__label td {
+    font-size: 7.2pt;
+    color: #5a5f6a;
+  }
+
+  .report-footer {
+    width: 100%;
+    margin-top: 10pt;
+    border-collapse: collapse;
+    border-top: 0.75pt solid #9aa6bd;
+  }
+
+  .report-footer td {
+    padding: 6pt 0 0;
+    border: 0;
+    font-size: 7.4pt;
+    line-height: 1.35;
+    color: #5a5f6a;
+    vertical-align: middle;
+  }
+
+  .report-footer__mark {
+    width: 36pt;
+  }
+
+  .report-footer__mark img {
+    display: block;
+    width: 30pt;
+    height: auto;
   }
 }
 
