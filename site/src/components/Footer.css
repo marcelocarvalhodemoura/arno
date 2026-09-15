@@ -1,0 +1,110 @@
+.foot {
+  background: var(--forest-deep);
+  color: var(--cream);
+  padding: 72px 0 28px;
+  margin-top: 0;
+}
+
+.foot .brand-copy strong,
+.foot h3 {
+  color: var(--cream);
+}
+
+.foot h3 {
+  font-size: 1.05rem;
+  margin-bottom: 18px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.foot .brand-mark {
+  width: 72px;
+  height: 72px;
+}
+
+.foot__grid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr;
+  gap: 48px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(244, 239, 228, 0.1);
+}
+
+.foot__lead {
+  margin-top: 18px;
+  color: rgba(244, 239, 228, 0.72);
+  max-width: 36rem;
+}
+
+.foot ul {
+  display: grid;
+  gap: 10px;
+}
+
+.foot a {
+  color: rgba(244, 239, 228, 0.78);
+  transition: color 0.3s var(--ease);
+}
+
+.foot a:hover {
+  color: var(--gold);
+}
+
+.foot p {
+  color: rgba(244, 239, 228, 0.78);
+  margin-bottom: 10px;
+}
+
+.foot p svg {
+  margin-right: 8px;
+  color: var(--gold);
+}
+
+.foot__meet {
+  margin-top: 16px;
+  font-weight: 600;
+  color: var(--cream) !important;
+}
+
+.foot__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-top: 22px;
+  font-size: 0.88rem;
+  color: rgba(244, 239, 228, 0.55);
+}
+
+.foot__social {
+  display: flex;
+  gap: 10px;
+}
+
+.foot__social a {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(244, 239, 228, 0.08);
+  color: var(--cream);
+}
+
+.foot__social a:hover {
+  background: var(--clay);
+  color: var(--white);
+}
+
+@media (max-width: 800px) {
+  .foot__grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .foot__bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+}

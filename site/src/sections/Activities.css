@@ -1,0 +1,81 @@
+.acts__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+.act {
+  background: var(--white);
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease);
+}
+
+.act:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow);
+}
+
+.act__img {
+  height: 190px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.act__img span {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: var(--forest);
+  color: var(--gold);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.act__body {
+  padding: 22px;
+}
+
+.act__body h3 {
+  margin-bottom: 8px;
+}
+
+.act__body p {
+  color: var(--muted);
+}
+
+.acts__note {
+  background: var(--paper);
+}
+
+.acts__note-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.acts__note h2 {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  margin: 10px 0 16px;
+}
+
+.acts__wide {
+  height: 360px;
+  border-radius: 24px;
+  background-size: cover;
+  background-position: center;
+}
+
+@media (max-width: 900px) {
+  .acts__grid,
+  .acts__note-box {
+    grid-template-columns: 1fr;
+  }
+}
