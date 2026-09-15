@@ -1,0 +1,36 @@
+# Deploy do sistema de tesouraria no Render (Node + PostgreSQL).
+# O site institucional (site/) não entra aqui: ele é estático e vai para a
+# hospedagem compartilhada.
+#
+# Como usar: no painel do Render, New > Blueprint, aponte para este repositório.
+# ADMIN_PASSWORD fica marcada como sync:false, então o Render pede o valor na
+# criação — é a senha dos usuários admin e tesouraria no primeiro start.
+
+databases:
+  - name: arno-tesouraria-db
+    databaseName: tesouraria
+    user: arno
+    plan: free
+
+services:
+  - type: web
+    name: arno-tesouraria
+    runtime: node
+    plan: free
+    rootDir: application
+    buildCommand: npm install && npm run build
+    startCommand: npm run start -w backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: arno-tesouraria-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: ADMIN_USER
+        value: tesouraria
+      - key: ADMIN_PASSWORD
+        sync: false
