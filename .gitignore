@@ -4,6 +4,9 @@ node_modules/
 # Builds e pacotes de publicação
 dist/
 *.zip
+
+# Arquivos temporários de prévia de impressão
+*.tmp.html
 dist-ssr/
 build/
 *.tsbuildinfo
