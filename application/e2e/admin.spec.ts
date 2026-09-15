@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ensureCatalog, expectPager, login } from "./helpers";
+import { ADMIN_USER, PASSWORD, ensureCatalog, expectPager, login } from "./helpers";
 
 test.describe("administrador", () => {
   test.beforeAll(async () => {
@@ -7,7 +7,7 @@ test.describe("administrador", () => {
   });
 
   test("sees dashboard listing, users, projects and fiscal report", async ({ page }) => {
-    await login(page, "admin", "arno1991");
+    await login(page, ADMIN_USER, PASSWORD);
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { name: "Indicadores da tesouraria" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Totais por ramo" })).toBeVisible();

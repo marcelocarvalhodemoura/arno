@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ensureCatalog, expectPager, login } from "./helpers";
+import { PASSWORD, TREASURER_USER, ensureCatalog, expectPager, login } from "./helpers";
 
 test.describe("tesoureiro", () => {
   test.beforeAll(async () => {
@@ -7,7 +7,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("logs in and paginates cash flow", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await expect(page).toHaveURL(/\/fluxo/);
     await expect(page.getByRole("heading", { name: "Entradas e saídas" })).toBeVisible();
     await expect(page.locator(".recharts-wrapper")).toHaveCount(0);
@@ -33,7 +33,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("filters members and movement types", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Associados" }).click();
     await expect(page.getByRole("heading", { name: "Cadastro e responsáveis" })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Responsáveis" })).toBeVisible();
@@ -62,7 +62,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("reconciles a pending cash flow launch", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await expect(page.locator("tr.is-paid").first()).toBeVisible();
     await page.getByRole("button", { name: "Lançamento manual" }).click();
     const modal = page.getByRole("dialog");
@@ -84,7 +84,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("registers a fee and shows a success toast", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Taxas" }).click();
     await expect(page.getByRole("heading", { name: "Taxas" })).toBeVisible();
     await page.getByRole("button", { name: "Nova taxa" }).click();
@@ -96,7 +96,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("imports associates from a CSV file", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Integração" }).click();
     await expect(page.getByRole("heading", { name: "Extratos e associados" })).toBeVisible();
     const stamp = Date.now();
@@ -119,7 +119,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("imports associates from an xlsx file", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Integração" }).click();
     const stamp = Date.now();
     const name = `Associado XLSX ${stamp}`;
@@ -158,7 +158,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("imports a cash flow statement from CSV", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Integração" }).click();
     await page.getByRole("button", { name: "Extrato" }).click();
     const stamp = Date.now();
@@ -182,7 +182,7 @@ test.describe("tesoureiro", () => {
   });
 
   test("interprets a bank CSV and imports the suggested launch", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Integração" }).click();
     await page.getByRole("button", { name: "Extrato" }).click();
     const stamp = Date.now();
@@ -203,12 +203,12 @@ test.describe("tesoureiro", () => {
   });
 
   test("imports a Sicredi PDF statement", async ({ page }) => {
-    await login(page, "tesouraria", "arno1991");
+    await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Integração" }).click();
     await page.getByRole("button", { name: "Extrato" }).click();
-    await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sicredi_1781979670.pdf");
+    await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/extrato-exemplo.pdf");
     await expect(page.getByText("Extrato do banco")).toBeVisible();
-    await expect(page.getByText(/MARCUS CHRISTIMANN/)).toBeVisible();
+    await expect(page.getByText(/JOANA EXEMPLO/)).toBeVisible();
     await expect(page.getByRole("button", { name: /Importar 1 lançamento/ })).toBeVisible();
     await page.getByRole("button", { name: /Importar 1 lançamento/ }).click();
     await expect(page.getByRole("status")).toContainText(/identificar o tipo|lançamento importado|já estava no caixa|já existia/);
@@ -217,7 +217,7 @@ test.describe("tesoureiro", () => {
     await modal.getByLabel("Tipo de movimentação").selectOption({ label: /Doação/ });
     await modal.getByRole("button", { name: "Identificar" }).click();
     await expect(page.getByRole("heading", { name: /Identificar lançamento/ })).toHaveCount(0);
-    await expect(page.getByText(/MARCUS CHRISTIMANN/)).toBeVisible();
+    await expect(page.getByText(/JOANA EXEMPLO/)).toBeVisible();
     await expect(page.getByText("Doação").first()).toBeVisible();
   });
 });

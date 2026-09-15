@@ -1,5 +1,11 @@
 import { expect, request as playwrightRequest, type APIRequestContext, type Page } from "@playwright/test";
 
+// As credenciais saem do .env (ADMIN_USER e ADMIN_PASSWORD), as mesmas que a API
+// usa para semear os usuários. Nenhuma senha real fica no repositório.
+export const ADMIN_USER = "admin";
+export const TREASURER_USER = process.env.ADMIN_USER ?? "tesouraria";
+export const PASSWORD = process.env.ADMIN_PASSWORD ?? "senha-de-teste";
+
 export async function login(page: Page, user: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Usuário").fill(user);
@@ -17,7 +23,7 @@ export async function expectPager(page: Page) {
 
 async function authHeaders(api: APIRequestContext) {
   const loginRes = await api.post("/api/auth/login", {
-    data: { user: "tesouraria", password: "arno1991" },
+    data: { user: TREASURER_USER, password: PASSWORD },
   });
   const body = (await loginRes.json()) as { token: string };
   return { Authorization: `Bearer ${body.token}` };

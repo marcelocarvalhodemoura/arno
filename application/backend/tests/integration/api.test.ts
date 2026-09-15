@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../../src/app.js";
 import { pool } from "../../src/db.js";
 import { isUuidV7 } from "../../src/id.js";
+import { TEST_ADMIN_USER, TEST_PASSWORD, TEST_TREASURER_USER } from "./credentials.js";
 
 const app = createApp();
 
@@ -13,7 +14,7 @@ async function login(user: string, password: string) {
 }
 
 async function tesoureiroAuth() {
-  const token = await login("tesouraria", "arno1991");
+  const token = await login(TEST_TREASURER_USER, TEST_PASSWORD);
   return { Authorization: `Bearer ${token}` };
 }
 
@@ -358,7 +359,7 @@ describe("API integration", () => {
 
     const listedMember = await request(app).get("/api/members").set(auth);
     const existing = listedMember.body.find((item: { guardians?: { name: string }[] }) =>
-      item.guardians?.some((guardian) => guardian.name === "Marcus Christimann"),
+      item.guardians?.some((guardian) => guardian.name === "Joana Exemplo"),
     );
     let memberId = existing?.id as string | undefined;
     if (!memberId) {
@@ -366,15 +367,15 @@ describe("API integration", () => {
         .post("/api/members")
         .set(auth)
         .send({
-          name: "Lucas Christimann",
-          email: `lucas.christimann.${Date.now()}@arnofriedrich.org.br`,
+          name: "Lucas Exemplo",
+          email: `lucas.exemplo.${Date.now()}@arnofriedrich.org.br`,
           phone: "(51) 99999-3409",
           branch: "escoteiro",
           role: "jovem",
           monthlyFee: 60,
           joinedAt: "2025-03-01",
           clubeLtc: false,
-          guardians: [{ name: "Marcus Christimann", relationship: "Pai", phone: "(51) 99999-3410", email: "" }],
+          guardians: [{ name: "Joana Exemplo", relationship: "Mãe", phone: "(51) 99999-3410", email: "" }],
         });
       expect(created.status).toBe(201);
       memberId = created.body.id as string;
@@ -385,7 +386,7 @@ describe("API integration", () => {
     for (const extra of savedLookup.body) {
       if (
         extra.id !== memberId &&
-        extra.guardians?.some((guardian: { name: string }) => guardian.name === "Marcus Christimann") &&
+        extra.guardians?.some((guardian: { name: string }) => guardian.name === "Joana Exemplo") &&
         extra.status !== "inactive"
       ) {
         await request(app).patch(`/api/members/${extra.id}`).set(auth).send({ status: "inactive" });
@@ -396,11 +397,11 @@ describe("API integration", () => {
         .post(`/api/members/${memberId}/accounts`)
         .set(auth)
         .send({
-          holderName: "Marcus Christimann",
+          holderName: "Joana Exemplo",
           holderKind: "parent",
           relationship: "Pai",
-          document: "953.433.340-91",
-          pixKey: "95343334091",
+          document: "111.111.111-11",
+          pixKey: "11111111111",
         });
       expect(account.status).toBe(201);
     }
@@ -423,7 +424,7 @@ describe("API integration", () => {
       });
     expect(pending.status).toBe(201);
 
-    const pdf = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../fixtures/sicredi_1781979670.pdf"));
+    const pdf = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../fixtures/extrato-exemplo.pdf"));
     const interpreted = await request(app)
       .post("/api/integrations/interpret-statement")
       .set(auth)
@@ -473,7 +474,7 @@ describe("API integration", () => {
   });
 
   it("lets the admin read dashboard, users and projects", async () => {
-    const token = await login("admin", "arno1991");
+    const token = await login(TEST_ADMIN_USER, TEST_PASSWORD);
     const auth = { Authorization: `Bearer ${token}` };
 
     const me = await request(app).get("/api/auth/me").set(auth);

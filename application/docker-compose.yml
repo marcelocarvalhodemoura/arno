@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-arno}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arno1991}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no arquivo .env}
       POSTGRES_DB: ${POSTGRES_DB:-tesouraria}
     ports:
       - "${POSTGRES_PORT:-5434}:5432"

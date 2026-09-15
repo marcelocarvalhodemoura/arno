@@ -27,11 +27,11 @@ const catalog = {
     },
     {
       id: "m-lucas",
-      name: "Lucas Christimann",
+      name: "Lucas Exemplo",
       branch: "escoteiro" as const,
       monthlyFee: 60,
-      accounts: [{ holderName: "Marcus Christimann", pixKey: "95343334091", document: "953.433.340-91" }],
-      guardians: [{ id: "g-marcus", name: "Marcus Christimann" }],
+      accounts: [{ holderName: "Joana Exemplo", pixKey: "11111111111", document: "111.111.111-11" }],
+      guardians: [{ id: "g-joana", name: "Joana Exemplo" }],
     },
   ],
   fees: [{ name: "Mensalidade", amount: 55 }],
@@ -103,12 +103,12 @@ describe("interpretStatement", () => {
   it("matches CPF and guardian on a Sicredi PIX and treats it as paid mensalidade", () => {
     const result = interpretStatement(
       `data;historico;valor;tipo
-05/01/2026;RECEBIMENTO PIX 95343334091 MARCUS CHRISTIMANN PIX_CRED;60,00;entrada
+05/01/2026;RECEBIMENTO PIX 11111111111 JOANA EXEMPLO PIX_CRED;60,00;entrada
 `,
       catalog,
     );
     expect(result.rows[0]?.memberId).toBe("m-lucas");
-    expect(result.rows[0]?.memberGuardianId).toBe("g-marcus");
+    expect(result.rows[0]?.memberGuardianId).toBe("g-joana");
     expect(result.rows[0]?.movementTypeName).toBe("Mensalidade");
     expect(result.rows[0]?.paymentStatus).toBe("paid");
     expect(result.rows[0]?.confidence).toBe("high");
@@ -149,8 +149,8 @@ describe("matchMember", () => {
   });
 
   it("matches a payment account CPF", () => {
-    const hit = matchMember("RECEBIMENTO PIX 95343334091 MARCUS CHRISTIMANN PIX_CRED", catalog.members);
+    const hit = matchMember("RECEBIMENTO PIX 11111111111 JOANA EXEMPLO PIX_CRED", catalog.members);
     expect(hit?.member.id).toBe("m-lucas");
-    expect(hit?.guardian?.id).toBe("g-marcus");
+    expect(hit?.guardian?.id).toBe("g-joana");
   });
 });

@@ -63,8 +63,7 @@ export default function Login() {
           </SubmitButton>
         </form>
         <p className="hint">
-          Admin: <strong>admin</strong> · Tesoureiro: <strong>tesouraria</strong> · senha{" "}
-          <strong>arno1991</strong>
+          Perfis: <strong>admin</strong> (administrador) e <strong>tesouraria</strong> (tesoureiro)
         </p>
       </motion.div>
     </div>

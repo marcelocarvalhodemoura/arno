@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { pool } from "./db.js";
 import { hashPassword } from "./password.js";
 import { id } from "./id.js";
@@ -233,7 +234,7 @@ export async function resetDb(): Promise<DatabaseShape> {
 export async function seedIfEmpty(): Promise<void> {
   cache = null;
   if ((await countUsers()) === 0) {
-    const password = process.env.ADMIN_PASSWORD ?? "arno1991";
+    const password = process.env.ADMIN_PASSWORD || randomBytes(12).toString("base64url");
     const hash = await hashPassword(password);
     await pool.query(
       `INSERT INTO users (id, username, name, email, password_hash, role, origin)
@@ -251,7 +252,15 @@ export async function seedIfEmpty(): Promise<void> {
         hash,
       ],
     );
-    console.log("Usuários iniciais criados: admin e tesouraria");
+    if (process.env.ADMIN_PASSWORD) {
+      console.log("Usuários iniciais criados: admin e tesouraria (senha de ADMIN_PASSWORD)");
+    } else {
+      console.log(
+        `Usuários iniciais criados: admin e tesouraria\n` +
+          `Senha gerada agora: ${password}\n` +
+          `Anote-a e troque no primeiro acesso, ou defina ADMIN_PASSWORD no .env antes do primeiro start.`,
+      );
+    }
   }
 
   const settings = await pool.query("SELECT id FROM settings LIMIT 1");

@@ -1,4 +1,5 @@
 import pg from "pg";
+import "./env.js";
 
 const { Pool, types } = pg;
 
@@ -7,8 +8,13 @@ types.setTypeParser(1114, (value) => value);
 types.setTypeParser(1184, (value) => value);
 types.setTypeParser(1700, (value) => Number.parseFloat(value));
 
-export const DATABASE_URL =
-  process.env.DATABASE_URL ?? "postgres://arno:arno1991@127.0.0.1:5434/tesouraria";
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL não definida. Copie application/.env.example para application/.env e preencha as credenciais do Postgres.",
+  );
+}
+
+export const DATABASE_URL = process.env.DATABASE_URL;
 
 export const pool = new Pool({
   connectionString: DATABASE_URL,

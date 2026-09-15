@@ -8,8 +8,8 @@ export default defineConfig({
     fileParallelism: false,
     hookTimeout: 60_000,
     testTimeout: 60_000,
+    // DATABASE_URL vem do .env e o setup troca o banco para tesouraria_test.
     env: {
-      DATABASE_URL: "postgres://arno:arno1991@127.0.0.1:5434/tesouraria_test",
       AUTH_SECRET: "test-secret",
     },
   },

@@ -20,9 +20,9 @@ describe("auth tokens", () => {
 
 describe("passwords", () => {
   it("hashes and verifies a password", async () => {
-    const stored = await hashPassword("arno1991");
+    const stored = await hashPassword("senha-de-teste");
     expect(stored).toContain(":");
-    expect(await verifyPassword("arno1991", stored)).toBe(true);
+    expect(await verifyPassword("senha-de-teste", stored)).toBe(true);
     expect(await verifyPassword("wrong", stored)).toBe(false);
   });
 });

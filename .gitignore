@@ -1,8 +1,9 @@
 # Dependências
 node_modules/
 
-# Builds
+# Builds e pacotes de publicação
 dist/
+*.zip
 dist-ssr/
 build/
 *.tsbuildinfo

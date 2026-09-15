@@ -28,7 +28,7 @@ cp .env.example .env
 npm run db:up
 ```
 
-O Postgres sobe em `127.0.0.1:5434` (usuário `arno`, senha `arno1991`, banco `tesouraria`). A porta 5434 evita conflito com outro Postgres local. A migration do schema e os usuários iniciais (`admin` e `tesouraria`) rodam sozinhos na primeira subida da API. Associados, taxas, tipos, projetos e lançamentos começam vazios — entram por cadastro manual ou pela Integração.
+O Postgres sobe em `127.0.0.1:5434` com o usuário, a senha e o banco que você definir no `.env` (`POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`). A porta 5434 evita conflito com outro Postgres local. A migration do schema e os usuários iniciais (`admin` e `tesouraria`) rodam sozinhos na primeira subida da API. Associados, taxas, tipos, projetos e lançamentos começam vazios — entram por cadastro manual ou pela Integração.
 
 Migration em `backend/migrations/001_schema.sql`: chaves primárias UUID (UUIDv7), com usuários, tipos de movimentação, associados, contas de pagamento, projetos, taxas, lançamentos e configurações.
 
@@ -59,12 +59,12 @@ npm run dev
 
 Acesso inicial:
 
-| Perfil         | Usuário      | Senha    |
-| -------------- | ------------ | -------- |
-| Administrador  | `admin`      | `arno1991` |
-| Tesoureiro     | `tesouraria` | `arno1991` |
+| Perfil        | Usuário                        | Senha                                     |
+| ------------- | ------------------------------ | ----------------------------------------- |
+| Administrador | `admin`                        | valor de `ADMIN_PASSWORD` no `.env`       |
+| Tesoureiro    | `ADMIN_USER` (ex.: `tesouraria`) | valor de `ADMIN_PASSWORD` no `.env`     |
 
-Na primeira execução a API cria esses usuários. O restante do cadastro (associados, tipos, taxas, projetos e caixa) é feito na interface ou na Integração.
+Na primeira execução a API cria esses dois usuários com a senha de `ADMIN_PASSWORD`. Se a variável não estiver definida, a API gera uma senha aleatória e a imprime uma única vez no console — anote e troque no primeiro acesso. O restante do cadastro (associados, tipos, taxas, projetos e caixa) é feito na interface ou na Integração.
 
 ## Testes
 

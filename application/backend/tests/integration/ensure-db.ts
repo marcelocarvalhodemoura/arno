@@ -1,7 +1,9 @@
 import pg from "pg";
 
-const ADMIN_URL =
-  process.env.DATABASE_ADMIN_URL ?? "postgres://arno:arno1991@127.0.0.1:5434/tesouraria";
+const ADMIN_URL = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
+if (!ADMIN_URL) {
+  throw new Error("Defina DATABASE_URL (ou DATABASE_ADMIN_URL) para criar o banco de teste.");
+}
 const TEST_DB = "tesouraria_test";
 
 export async function ensureTestDatabase() {
