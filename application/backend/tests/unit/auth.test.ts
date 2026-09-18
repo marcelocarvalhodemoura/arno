@@ -1,6 +1,17 @@
+import { randomBytes, scrypt } from "node:crypto";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { issueToken, verifyToken } from "../../src/auth.js";
-import { hashPassword, verifyPassword } from "../../src/password.js";
+import { issueToken, verifyToken } from "../../src/shared/auth/auth.js";
+import { hashPassword, isLegacyHash, verifyPassword } from "../../src/shared/auth/password.js";
+
+const scryptAsync = promisify(scrypt);
+
+// Reproduz o formato salt:hash usado antes do bcrypt.
+async function legacyScryptHash(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const derived = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${salt}:${derived.toString("hex")}`;
+}
 
 describe("auth tokens", () => {
   it("issues a token that can be verified", () => {
@@ -19,10 +30,24 @@ describe("auth tokens", () => {
 });
 
 describe("passwords", () => {
-  it("hashes and verifies a password", async () => {
+  it("hashes with bcrypt and verifies a password", async () => {
     const stored = await hashPassword("senha-de-teste");
-    expect(stored).toContain(":");
+    expect(stored).toMatch(/^\$2[aby]\$12\$/);
+    expect(stored).not.toContain("senha-de-teste");
+    expect(isLegacyHash(stored)).toBe(false);
     expect(await verifyPassword("senha-de-teste", stored)).toBe(true);
     expect(await verifyPassword("wrong", stored)).toBe(false);
+  });
+
+  it("never repeats the hash of the same password", async () => {
+    const [first, second] = await Promise.all([hashPassword("senha-de-teste"), hashPassword("senha-de-teste")]);
+    expect(first).not.toBe(second);
+  });
+
+  it("still verifies the scrypt hashes stored before the switch", async () => {
+    const legacy = await legacyScryptHash("senha-de-teste");
+    expect(isLegacyHash(legacy)).toBe(true);
+    expect(await verifyPassword("senha-de-teste", legacy)).toBe(true);
+    expect(await verifyPassword("wrong", legacy)).toBe(false);
   });
 });

@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { pool, waitForDb } from "./db.js";
-import { seedIfEmpty } from "./store.js";
+import { pool, waitForDb } from "./shared/db.js";
+import { seedIfEmpty } from "./shared/persistence/finance-store.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(root, "../migrations");
@@ -16,9 +16,7 @@ export async function migrate(): Promise<void> {
   `);
 
   const applied = new Set(
-    (await pool.query<{ id: string }>("SELECT id FROM schema_migrations")).rows.map(
-      (row) => row.id,
-    ),
+    (await pool.query<{ id: string }>("SELECT id FROM schema_migrations")).rows.map((row) => row.id),
   );
 
   const files = readdirSync(migrationsDir)

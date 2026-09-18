@@ -53,7 +53,9 @@ export function stampAuthor(author?: { name: string; username?: string } | null)
 }
 
 export function originShort(origin?: string): string {
-  return origin === "manual" ? "Manual" : "Integração";
+  if (origin === "manual") return "Manual";
+  if (origin === "sicredi") return "Sicredi";
+  return "Integração";
 }
 
 export function monthLabel(key: string): string {
@@ -122,7 +124,9 @@ export function holderKindLabel(kind: string): string {
 }
 
 export function originLabel(origin?: string): string {
-  return origin === "manual" ? "Inserção manual" : "Integração";
+  if (origin === "manual") return "Inserção manual";
+  if (origin === "sicredi") return "Sicredi";
+  return "Integração";
 }
 
 export function auditAction(updatedAt?: string, createdAt?: string): "Alterado" | "Lançado" {
@@ -163,9 +167,7 @@ export function toCsv(rows: Record<string, string | number>[]): string {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]);
   const esc = (v: string | number) => `"${String(v).replaceAll('"', '""')}"`;
-  return [headers.join(";"), ...rows.map((r) => headers.map((h) => esc(r[h] ?? "")).join(";"))].join(
-    "\n",
-  );
+  return [headers.join(";"), ...rows.map((r) => headers.map((h) => esc(r[h] ?? "")).join(";"))].join("\n");
 }
 
 export function downloadCsv(filename: string, content: string) {

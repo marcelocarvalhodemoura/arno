@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   ALL_BRANCHES,
   BRANCH_LABELS,
   YOUTH_BRANCHES,
@@ -37,16 +28,14 @@ import FilterBar from "../components/FilterBar";
 import Pager from "../components/Pager";
 import IconButton from "../components/IconButton";
 import { AnimatePresence } from "framer-motion";
-import { FaCheck, FaClock, FaPen, FaTag, FaTrashAlt } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
+import { FaBroadcastTower, FaCheck, FaClock, FaPen, FaTag, FaTrashAlt, FaCodeBranch } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 import { api } from "../api/client";
 import {
   brl,
-  chartMoney,
   formatDate,
   methodLabel,
-  monthLabel,
   natureLabel,
   originLabel,
   settlementLabel,
@@ -59,12 +48,7 @@ import { formClass, submitAttempt } from "../lib/form";
 import { matchesQuery, usePagedList } from "../lib/listing";
 import { dateInPeriod, periodRange, usePeriod } from "../lib/period";
 import { useFetch } from "../lib/useFetch";
-import {
-  clearIdentifyFlag,
-  isUnidentifiedName,
-  natureForTypeName,
-  readIdentifyFlag,
-} from "../lib/movement";
+import { clearIdentifyFlag, isUnidentifiedName, natureForTypeName, readIdentifyFlag } from "../lib/movement";
 
 type Flow = {
   opening: number;
@@ -104,9 +88,8 @@ function blankForm(year: number, month: number) {
 }
 
 export default function CashFlow() {
-  const { role } = useAuth();
   const toast = useToast();
-  const showChart = role === "admin";
+  const navigate = useNavigate();
   const { year, month, setYear, setMonth } = usePeriod();
   const { from, to } = periodRange(year, month);
   const flow = useFetch<Flow>(`/reports/cashflow?from=${from}&to=${to}`);
@@ -131,25 +114,23 @@ export default function CashFlow() {
   const [statusFilter, setStatusFilter] = useState<"paid" | "pending" | "overdue" | "">("");
   const [saving, setSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  const [splitting, setSplitting] = useState<TxView | null>(null);
+  const [splitParts, setSplitParts] = useState<{ amount: string; movementTypeId: string; description: string }[]>([]);
 
-  const chart = useMemo(
-    () =>
-      (flow.data?.months ?? []).map((m) => ({
-        name: monthLabel(m.month),
-        Saldo: m.balance,
-        Entradas: m.income,
-        Saídas: m.expense,
-      })),
-    [flow.data],
+  const unidentifiedTypeIds = useMemo(
+    () => new Set((types.data ?? []).filter((item) => isUnidentifiedName(item.name)).map((item) => item.id)),
+    [types.data],
   );
+  const wantsUnidentified = movementFilter === "__unidentified__" || unidentifiedTypeIds.has(movementFilter);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return (txs.data ?? []).filter((t) => {
+    const source = wantsUnidentified && month ? (yearTxs.data ?? txs.data ?? []) : (txs.data ?? []);
+    return source.filter((t) => {
       if (typeFilter && t.type !== typeFilter) return false;
       if (natureFilter && t.nature !== natureFilter) return false;
       if (branchFilter && t.branch !== branchFilter) return false;
-      if (movementFilter === "__unidentified__") {
+      if (wantsUnidentified) {
         if (!isUnidentifiedName(t.movementType?.name)) return false;
       } else if (movementFilter && t.movementTypeId !== movementFilter) {
         return false;
@@ -177,7 +158,18 @@ export default function CashFlow() {
       }
       return true;
     });
-  }, [txs.data, query, typeFilter, natureFilter, branchFilter, movementFilter, statusFilter]);
+  }, [
+    txs.data,
+    yearTxs.data,
+    month,
+    query,
+    typeFilter,
+    natureFilter,
+    branchFilter,
+    movementFilter,
+    statusFilter,
+    wantsUnidentified,
+  ]);
 
   const unidentified = useMemo(() => {
     const source = month ? (yearTxs.data ?? []) : (txs.data ?? []);
@@ -185,6 +177,11 @@ export default function CashFlow() {
       .filter((item) => isUnidentifiedName(item.movementType?.name))
       .sort((a, b) => a.date.localeCompare(b.date) || a.description.localeCompare(b.description));
   }, [month, yearTxs.data, txs.data]);
+
+  const sicredi = useFetch<{ configured: boolean; mock: boolean; lastSyncAt?: string }>(
+    `/integrations/sicredi?from=${from}&to=${to}`,
+  );
+  const [liveSyncing, setLiveSyncing] = useState(false);
 
   const identifyTypes = useMemo(() => {
     if (!identifying) return [];
@@ -198,7 +195,17 @@ export default function CashFlow() {
 
   const listing = usePagedList(
     filtered,
-    [query, typeFilter, natureFilter, branchFilter, movementFilter, statusFilter, from, to].join("|"),
+    [
+      query,
+      typeFilter,
+      natureFilter,
+      branchFilter,
+      movementFilter,
+      statusFilter,
+      from,
+      to,
+      wantsUnidentified ? "year" : "period",
+    ].join("|"),
   );
 
   const selectedMember = (members.data ?? []).find((m) => m.id === form.memberId);
@@ -217,7 +224,7 @@ export default function CashFlow() {
   function onMemberChange(memberId: string) {
     const member = (members.data ?? []).find((m) => m.id === memberId);
     const primary = member?.accounts.find((a) => a.isPrimary && a.active) ?? member?.accounts[0];
-    const firstGuardian = member?.role === "jovem" ? member.guardians?.[0]?.id ?? "" : "";
+    const firstGuardian = member?.role === "jovem" ? (member.guardians?.[0]?.id ?? "") : "";
     setForm({
       ...form,
       memberId,
@@ -270,7 +277,12 @@ export default function CashFlow() {
 
   function startIdentifyQueue(list: TxView[], fromId?: string) {
     if (!list.length) return;
-    const start = fromId ? Math.max(0, list.findIndex((item) => item.id === fromId)) : 0;
+    const start = fromId
+      ? Math.max(
+          0,
+          list.findIndex((item) => item.id === fromId),
+        )
+      : 0;
     const queue = list.slice(start);
     setIdentifyQueue(queue.map((item) => item.id));
     setIdentifyIndex(0);
@@ -413,18 +425,104 @@ export default function CashFlow() {
     await Promise.all([flow.reload(), txs.reload(), yearTxs.reload()]);
   }
 
+  function openSplit(tx: TxView) {
+    const half = Math.round((tx.amount / 2) * 100) / 100;
+    const rest = Math.round((tx.amount - half) * 100) / 100;
+    setSplitting(tx);
+    setSplitParts([
+      {
+        amount: formatMoney(half),
+        movementTypeId: tx.movementTypeId,
+        description: tx.description,
+      },
+      {
+        amount: formatMoney(rest),
+        movementTypeId: "",
+        description: "",
+      },
+    ]);
+    setError(null);
+  }
+
+  async function saveSplit(e: FormEvent<HTMLFormElement>) {
+    if (!submitAttempt(e, setAttempted)) return;
+    if (!splitting) return;
+    const parts = splitParts.map((part) => ({
+      amount: parseMoney(part.amount),
+      movementTypeId: part.movementTypeId,
+      description: part.description.trim(),
+    }));
+    if (parts.some((part) => !(part.amount > 0) || !part.movementTypeId || part.description.length < 2)) {
+      setError("Preencha valor, tipo e descrição de cada parte.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await api(`/transactions/${splitting.id}/split`, {
+        method: "POST",
+        body: JSON.stringify({ parts }),
+      });
+      toast.success("Lançamento rateado.");
+      setSplitting(null);
+      void Promise.all([flow.reload(), txs.reload(), yearTxs.reload()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível ratear");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function setPaymentStatus(tx: TxView, paymentStatus: TxPaymentStatus) {
     await api(`/transactions/${tx.id}`, {
       method: "PATCH",
       body: JSON.stringify({ paymentStatus }),
     });
     toast.success(
-      paymentStatus === "paid"
-        ? "Lançamento conciliado com sucesso."
-        : "Lançamento marcado como pendente.",
+      paymentStatus === "paid" ? "Lançamento conciliado com sucesso." : "Lançamento marcado como pendente.",
     );
     await Promise.all([flow.reload(), txs.reload(), yearTxs.reload()]);
   }
+
+  async function pullSicredi(quiet = false) {
+    if (!sicredi.data?.configured) return;
+    setLiveSyncing(true);
+    try {
+      const result = await api<{ created: number; paid: number }>("/integrations/sicredi/sync", {
+        method: "POST",
+        body: JSON.stringify({ from, to }),
+      });
+      if (result.created || result.paid) {
+        await Promise.all([flow.reload(), txs.reload(), yearTxs.reload(), sicredi.reload()]);
+        if (!quiet) {
+          toast.success(
+            `${result.created ? `${result.created} Pix no caixa` : ""}${
+              result.created && result.paid ? " · " : ""
+            }${result.paid ? `${result.paid} conciliação(ões)` : ""}.`,
+          );
+        }
+      } else {
+        await sicredi.reload();
+      }
+    } catch (err) {
+      if (!quiet) {
+        setError(err instanceof Error ? err.message : "Não foi possível ler o Sicredi");
+      }
+    } finally {
+      setLiveSyncing(false);
+    }
+  }
+
+  const sicrediReady = Boolean(sicredi.data?.configured);
+
+  useEffect(() => {
+    if (!sicrediReady) return;
+    void pullSicredi(true);
+    const timer = window.setInterval(() => {
+      void pullSicredi(true);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [sicrediReady, from, to]);
 
   useEffect(() => {
     if (!pendingIdentify.current || !unidentified.length) return;
@@ -448,540 +546,627 @@ export default function CashFlow() {
       <PageHeader
         kicker="Fluxo de caixa"
         title="Entradas e saídas"
-        subtitle="Lançamentos do caixa com conciliação: pago em verde, pendente em amarelo e vencido em vermelho. Linhas do extrato sem tipo entram como não identificadas para classificar na sequência."
+        subtitle="Lançamentos do caixa com conciliação: pago em verde, pendente em amarelo e vencido em vermelho. O Pix do Sicredi entra sozinho; linhas sem tipo ficam para identificar."
         actions={
-          <button className="btn btn-primary" type="button" onClick={openCreate}>
-            Lançamento manual
-          </button>
+          <div className="page-head__actions">
+            {sicredi.data?.configured ? (
+              <button
+                className="btn btn-outline"
+                type="button"
+                disabled={liveSyncing}
+                onClick={() => void pullSicredi()}
+              >
+                <span className={`live-dot${liveSyncing ? " is-spin" : ""}`} />
+                {liveSyncing ? "Lendo Sicredi…" : "Sicredi ao vivo"}
+              </button>
+            ) : sicredi.data ? (
+              <button className="btn btn-outline" type="button" onClick={() => navigate("/integracao")}>
+                <FaBroadcastTower /> Ligar Sicredi
+              </button>
+            ) : null}
+            <button className="btn btn-primary" type="button" onClick={openCreate}>
+              Lançamento manual
+            </button>
+          </div>
         }
       />
 
       <IdentifyPaymentsGuide />
 
-      {unidentified.length ? (
-        <article className="card identify-banner">
-          <div>
-            <strong>
-              {unidentified.length === 1
-                ? "1 lançamento sem tipo definido"
-                : `${unidentified.length} lançamentos sem tipo definido`}
-            </strong>
-            <p className="muted" style={{ margin: "6px 0 0" }}>
-              Vieram do extrato e ainda não têm tipo de movimentação. Identifique um a um: tipo, associado e ramo.
-            </p>
-          </div>
-          <button className="btn btn-primary" type="button" onClick={() => startIdentifyQueue(unidentified)}>
-            Identificar agora
-          </button>
-        </article>
-      ) : null}
-
       <FetchOverlay active={refreshing} label="Atualizando lançamentos…">
-      <div className="grid-stats">
-        <StatCard title="Saldo inicial" value={brl(data.opening)} hint="Antes do período" />
-        <StatCard title="Entradas no período" value={brl(periodIncome)} tone="pos" />
-        <StatCard title="Saídas no período" value={brl(periodExpense)} tone="neg" />
-        <StatCard title="Saldo atual" value={brl(data.closing)} />
-      </div>
-
-      {showChart ? (
-        <article className="card chart-card" style={{ marginTop: 16 }}>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={chart}>
-              <defs>
-                <linearGradient id="saldo" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0c2d6b" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#0c2d6b" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(12,45,107,.12)" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip formatter={chartMoney} />
-              <Area type="monotone" dataKey="Saldo" stroke="#0c2d6b" fill="url(#saldo)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </article>
-      ) : null}
-
-      <article className="card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginBottom: 12 }}>Lançamentos</h3>
-        <FilterBar>
-          <label className="field">
-            <span>Buscar</span>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Descrição, associado, tipo…"
-            />
-          </label>
-          <label className="field">
-            <span>Entrada / saída</span>
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TxType | "")}>
-              <option value="">Todas</option>
-              <option value="income">Entrada</option>
-              <option value="expense">Saída</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Natureza</span>
-            <select
-              value={natureFilter}
-              onChange={(e) => setNatureFilter(e.target.value as TxNature | "")}
-            >
-              <option value="">Todas</option>
-              <option value="fixed">Fixa</option>
-              <option value="variable">Variável</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Ramo</span>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value as BranchId | "")}
-            >
-              <option value="">Todos</option>
-              {ALL_BRANCHES.map((id) => (
-                <option key={id} value={id}>
-                  {BRANCH_LABELS[id]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Tipo de movimentação</span>
-            <select value={movementFilter} onChange={(e) => setMovementFilter(e.target.value)}>
-              <option value="">Todos</option>
-              <option value="__unidentified__">Não identificado</option>
-              {(types.data ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Conciliação</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "paid" | "pending" | "overdue" | "")}
-            >
-              <option value="">Todas</option>
-              <option value="paid">Pago</option>
-              <option value="pending">Pendente</option>
-              <option value="overdue">Vencido</option>
-            </select>
-          </label>
-        </FilterBar>
-
-        <ListingResults
-          fetching={refreshing}
-          filtering={listing.busy}
-          fetchLabel="Atualizando lançamentos…"
-        >
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Vencimento</th>
-                <th>Lançamento</th>
-                <th>Tipo</th>
-                <th>Ramo</th>
-                <th>Natureza</th>
-                <th>Conciliação</th>
-                <th className="num">Valor</th>
-                <th className="cell-actions">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {listing.pageRows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="muted">
-                    Nenhum lançamento com esses filtros.
-                  </td>
-                </tr>
-              ) : (
-                listing.pageRows.map((t) => {
-                  const settlement = settlementOf(t.paymentStatus, t.date);
-                  const unidentifiedRow = isUnidentifiedName(t.movementType?.name);
-                  return (
-                  <tr key={t.id} className={`is-${settlement}${unidentifiedRow ? " is-unidentified" : ""}`}>
-                    <td>{formatDate(t.date)}</td>
-                    <td>
-                      <strong>{t.description}</strong>
-                      <div className="muted">
-                        {t.member ? `${t.member.name} · ` : ""}
-                        {t.guardian ? `${t.guardian.name} (${t.guardian.relationship}) · ` : ""}
-                        {t.account ? `${t.account.holderName} · ` : ""}
-                        {methodLabel(t.method)}
-                      </div>
-                      <RecordStamp
-                        origin={t.origin}
-                        createdAt={t.createdAt}
-                        createdBy={t.createdByUser}
-                        updatedAt={t.updatedAt}
-                        updatedBy={t.updatedByUser}
-                      />
-                    </td>
-                    <td>
-                      <Badge kind={t.type}>{t.movementType?.name ?? "—"}</Badge>
-                    </td>
-                    <td>
-                      <span className="branch-dot" style={{ background: colorOf(t.branch) }} />{" "}
-                      {BRANCH_LABELS[t.branch]}
-                    </td>
-                    <td>
-                      <Badge kind={t.nature}>{natureLabel(t.nature)}</Badge>
-                    </td>
-                    <td>
-                      <Badge kind={settlement}>{settlementLabel(settlement)}</Badge>
-                    </td>
-                    <td className={`num ${signedClass(t.type === "income" ? t.amount : -t.amount)}`}>
-                      {t.type === "income" ? "+" : "−"} {brl(t.amount)}
-                    </td>
-                    <td className="cell-actions">
-                      {unidentifiedRow ? (
-                        <IconButton label="Identificar tipo" onClick={() => startIdentifyQueue(unidentified, t.id)}>
-                          <FaTag />
-                        </IconButton>
-                      ) : null}
-                      {settlement === "paid" ? (
-                        <IconButton
-                          label="Marcar como pendente"
-                          onClick={() => void setPaymentStatus(t, "pending")}
-                        >
-                          <FaClock />
-                        </IconButton>
-                      ) : (
-                        <IconButton
-                          label="Marcar como pago"
-                          tone="success"
-                          onClick={() => void setPaymentStatus(t, "paid")}
-                        >
-                          <FaCheck />
-                        </IconButton>
-                      )}
-                      <IconButton label="Alterar lançamento" onClick={() => openEdit(t)}>
-                        <FaPen />
-                      </IconButton>
-                      <IconButton label="Excluir lançamento" tone="danger" onClick={() => void remove(t.id)}>
-                        <FaTrashAlt />
-                      </IconButton>
-                    </td>
-                  </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+        <div className="grid-stats">
+          <StatCard title="Saldo inicial" value={brl(data.opening)} hint="Antes do período" />
+          <StatCard title="Entradas no período" value={brl(periodIncome)} tone="pos" />
+          <StatCard title="Saídas no período" value={brl(periodExpense)} tone="neg" />
+          <StatCard title="Saldo atual" value={brl(data.closing)} />
         </div>
 
-        <Pager
-          total={listing.total}
-          fromRow={listing.fromRow}
-          toRow={listing.toRow}
-          pageSize={listing.pageSize}
-          currentPage={listing.currentPage}
-          pageCount={listing.pageCount}
-          onPageSize={listing.setPageSize}
-          onPage={listing.setPage}
-        />
-        </ListingResults>
-      </article>
-      </FetchOverlay>
+        {unidentified.length ? (
+          <article className="card identify-banner">
+            <div>
+              <strong>
+                {unidentified.length === 1
+                  ? "1 lançamento sem tipo definido"
+                  : `${unidentified.length} lançamentos sem tipo definido`}
+              </strong>
+              <p className="muted" style={{ margin: "6px 0 0" }}>
+                Vieram do extrato e ainda não têm tipo de movimentação. Identifique um a um: tipo, associado e ramo.
+              </p>
+            </div>
+            <button className="btn btn-primary" type="button" onClick={() => startIdentifyQueue(unidentified)}>
+              Identificar agora
+            </button>
+          </article>
+        ) : null}
 
-      <AnimatePresence>
-      {open ? (
-        <Modal title={editing ? "Alterar lançamento" : "Lançamento manual"} onClose={closeForm}>
-          <form onSubmit={onSave} className={formClass("form-grid", attempted)} noValidate>
-            {error ? <div className="error wide">{error}</div> : null}
+        <article className="card" style={{ marginTop: 16 }}>
+          <h3 style={{ marginBottom: 12 }}>Lançamentos</h3>
+          <FilterBar>
             <label className="field">
-              <span>Vencimento</span>
-              <input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+              <span>Buscar</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Descrição, associado, tipo…"
+              />
             </label>
             <label className="field">
-              <span>Situação</span>
-              <select
-                required
-                value={form.paymentStatus}
-                onChange={(e) => setForm({ ...form, paymentStatus: e.target.value as TxPaymentStatus })}
-              >
-                <option value="paid">Pago</option>
-                <option value="pending">Pendente</option>
-              </select>
-            </label>
-            <label className="field">
-              <span>Entrada ou saída</span>
-              <select
-                required
-                value={form.type}
-                onChange={(e) =>
-                  setForm({ ...form, type: e.target.value as TxType, movementTypeId: "" })
-                }
-              >
+              <span>Entrada / saída</span>
+              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TxType | "")}>
+                <option value="">Todas</option>
                 <option value="income">Entrada</option>
                 <option value="expense">Saída</option>
               </select>
             </label>
-            <div className="field">
-              <span>
-                Conta fixa ou variável
-                <abbr className="req" title="Obrigatório">
-                  *
-                </abbr>
-              </span>
-              <div className="flag-row">
-                <button
-                  type="button"
-                  className={`flag ${form.nature === "fixed" ? "is-on" : ""}`}
-                  onClick={() => setForm({ ...form, nature: "fixed" })}
-                >
-                  Fixa
-                </button>
-                <button
-                  type="button"
-                  className={`flag ${form.nature === "variable" ? "is-on" : ""}`}
-                  onClick={() => setForm({ ...form, nature: "variable" })}
-                >
-                  Variável
-                </button>
-              </div>
-            </div>
+            <label className="field">
+              <span>Natureza</span>
+              <select value={natureFilter} onChange={(e) => setNatureFilter(e.target.value as TxNature | "")}>
+                <option value="">Todas</option>
+                <option value="fixed">Fixa</option>
+                <option value="variable">Variável</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Ramo</span>
+              <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value as BranchId | "")}>
+                <option value="">Todos</option>
+                {ALL_BRANCHES.map((id) => (
+                  <option key={id} value={id}>
+                    {BRANCH_LABELS[id]}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="field">
               <span>Tipo de movimentação</span>
-              <select
-                required
-                value={form.movementTypeId}
-                onChange={(e) => setForm({ ...form, movementTypeId: e.target.value })}
-              >
-                <option value="">Selecione</option>
-                {allowedTypes.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                    {!t.active ? " (inativo)" : ""}
-                    {t.direction !== "both" && t.direction !== form.type ? " · direção diferente" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field wide">
-              <span>Descrição</span>
-              <input
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                required
-                minLength={2}
-              />
-            </label>
-            <label className={`field${attempted && !(parseMoney(form.amount) > 0) ? " is-invalid" : ""}`}>
-              <span>Valor (R$)</span>
-              <input
-                inputMode="numeric"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: maskMoney(e.target.value) })}
-                placeholder="0,00"
-                required
-              />
-            </label>
-            <label className="field">
-              <span>Ramo</span>
-              <select required value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value as BranchId })}>
-                {ALL_BRANCHES.map((id) => (
-                  <option key={id} value={id}>
-                    {BRANCH_LABELS[id]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Associado (opcional)</span>
-              <select value={form.memberId} onChange={(e) => onMemberChange(e.target.value)}>
-                <option value="">Sem associado</option>
-                {(members.data ?? []).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} · {BRANCH_LABELS[m.branch]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedMember?.role === "jovem" ? (
-              <label className="field">
-                <span>Responsável</span>
-                <select
-                  value={form.memberGuardianId}
-                  onChange={(e) => setForm({ ...form, memberGuardianId: e.target.value })}
-                >
-                  <option value="">Não informar</option>
-                  {selectedGuardians.map((guardian) => (
-                    <option key={guardian.id} value={guardian.id}>
-                      {guardian.name} · {guardian.relationship}
+              <select value={movementFilter} onChange={(e) => setMovementFilter(e.target.value)}>
+                <option value="">Todos</option>
+                <option value="__unidentified__">Não identificado</option>
+                {(types.data ?? [])
+                  .filter((t) => !isUnidentifiedName(t.name))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
                     </option>
                   ))}
-                </select>
-                {selectedGuardians.length === 0 ? (
-                  <span className="muted">Cadastre o responsável no associado para vincular neste lançamento.</span>
-                ) : null}
-              </label>
-            ) : null}
+              </select>
+            </label>
             <label className="field">
-              <span>Conta do pagamento</span>
+              <span>Conciliação</span>
               <select
-                value={form.memberAccountId}
-                onChange={(e) => setForm({ ...form, memberAccountId: e.target.value })}
-                disabled={!selectedMember}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as "paid" | "pending" | "overdue" | "")}
               >
-                <option value="">Não informar</option>
-                {(selectedMember?.accounts ?? []).map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.holderName} · {a.relationship}
-                  </option>
-                ))}
+                <option value="">Todas</option>
+                <option value="paid">Pago</option>
+                <option value="pending">Pendente</option>
+                <option value="overdue">Vencido</option>
               </select>
             </label>
-            <label className="field">
-              <span>Projeto financeiro</span>
-              <select
-                value={form.projectId}
-                onChange={(e) => setForm({ ...form, projectId: e.target.value })}
-              >
-                <option value="">Nenhum</option>
-                {(projects.data ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Meio</span>
-              <select required value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value as PaymentMethod })}>
-                <option value="pix">Pix</option>
-                <option value="transfer">Transferência</option>
-                <option value="cash">Dinheiro</option>
-                <option value="card">Cartão</option>
-                <option value="other">Outro</option>
-              </select>
-            </label>
-            <p className="muted wide">
-              Natureza: {natureLabel(form.nature)} · {typeLabel(form.type)}
-              {selectedMember ? ` · ${selectedMember.name}` : ""}
+          </FilterBar>
+          {month && wantsUnidentified ? (
+            <p className="muted" style={{ margin: "-4px 0 12px" }}>
+              Inclui lançamentos sem tipo de todos os meses de {year}.
             </p>
-            <div className="modal-actions wide">
-              <button className="btn btn-ghost" type="button" onClick={closeForm} disabled={saving}>
-                Cancelar
-              </button>
-              <SubmitButton busy={saving} busyLabel={editing ? "Salvando…" : "Lançando…"}>
-                {editing ? "Salvar alteração" : "Lançar"}
-              </SubmitButton>
+          ) : null}
+
+          <ListingResults fetching={refreshing} filtering={listing.busy} fetchLabel="Atualizando lançamentos…">
+            <div className="table-wrap">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>Vencimento</th>
+                    <th>Lançamento</th>
+                    <th>Tipo</th>
+                    <th>Ramo</th>
+                    <th>Natureza</th>
+                    <th>Conciliação</th>
+                    <th className="num">Valor</th>
+                    <th className="cell-actions">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listing.pageRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="muted">
+                        Nenhum lançamento com esses filtros.
+                      </td>
+                    </tr>
+                  ) : (
+                    listing.pageRows.map((t) => {
+                      const settlement = settlementOf(t.paymentStatus, t.date);
+                      const unidentifiedRow = isUnidentifiedName(t.movementType?.name);
+                      return (
+                        <tr key={t.id} className={`is-${settlement}${unidentifiedRow ? " is-unidentified" : ""}`}>
+                          <td>{formatDate(t.date)}</td>
+                          <td>
+                            <strong>{t.description}</strong>
+                            <div className="muted">
+                              {t.member ? `${t.member.name} · ` : ""}
+                              {t.guardian ? `${t.guardian.name} (${t.guardian.relationship}) · ` : ""}
+                              {t.account ? `${t.account.holderName} · ` : ""}
+                              {methodLabel(t.method)}
+                            </div>
+                            <RecordStamp
+                              origin={t.origin}
+                              createdAt={t.createdAt}
+                              createdBy={t.createdByUser}
+                              updatedAt={t.updatedAt}
+                              updatedBy={t.updatedByUser}
+                            />
+                          </td>
+                          <td>
+                            <Badge kind={t.type}>{t.movementType?.name ?? "—"}</Badge>
+                          </td>
+                          <td>
+                            <span className="branch-dot" style={{ background: colorOf(t.branch) }} />{" "}
+                            {BRANCH_LABELS[t.branch]}
+                          </td>
+                          <td>
+                            <Badge kind={t.nature}>{natureLabel(t.nature)}</Badge>
+                          </td>
+                          <td>
+                            <Badge kind={settlement}>{settlementLabel(settlement)}</Badge>
+                          </td>
+                          <td className={`num ${signedClass(t.type === "income" ? t.amount : -t.amount)}`}>
+                            {t.type === "income" ? "+" : "−"} {brl(t.amount)}
+                          </td>
+                          <td className="cell-actions">
+                            {unidentifiedRow ? (
+                              <IconButton
+                                label="Identificar tipo"
+                                onClick={() => startIdentifyQueue(unidentified, t.id)}
+                              >
+                                <FaTag />
+                              </IconButton>
+                            ) : null}
+                            {settlement === "paid" ? (
+                              <IconButton
+                                label="Marcar como pendente"
+                                onClick={() => void setPaymentStatus(t, "pending")}
+                              >
+                                <FaClock />
+                              </IconButton>
+                            ) : (
+                              <IconButton
+                                label="Marcar como pago"
+                                tone="success"
+                                onClick={() => void setPaymentStatus(t, "paid")}
+                              >
+                                <FaCheck />
+                              </IconButton>
+                            )}
+                            <IconButton label="Alterar lançamento" onClick={() => openEdit(t)}>
+                              <FaPen />
+                            </IconButton>
+                            <IconButton label="Ratear lançamento" onClick={() => openSplit(t)}>
+                              <FaCodeBranch />
+                            </IconButton>
+                            <IconButton label="Excluir lançamento" tone="danger" onClick={() => void remove(t.id)}>
+                              <FaTrashAlt />
+                            </IconButton>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-          </form>
-        </Modal>
-      ) : null}
-      {identifying ? (
-        <Modal
-          title={
-            identifyQueue.length > 1
-              ? `Identificar lançamento · ${identifyIndex + 1} de ${identifyQueue.length}`
-              : "Identificar lançamento"
-          }
-          onClose={closeForm}
-        >
-          <form onSubmit={(event) => void onIdentify(event)} className={formClass("form-grid", attempted)} noValidate>
-            {error ? <div className="error wide">{error}</div> : null}
-            <p className="muted wide">
-              {formatDate(identifying.date)} · {typeLabel(identifying.type)} · {brl(identifying.amount)}
-              <br />
-              {identifying.description}
-            </p>
-            <label className="field wide">
-              <span>
-                Tipo de movimentação
-                <abbr className="req" title="Obrigatório">
-                  *
-                </abbr>
-              </span>
-              <select
-                required
-                value={form.movementTypeId}
-                onChange={(e) => {
-                  const movement = (types.data ?? []).find((item) => item.id === e.target.value);
-                  setForm({
-                    ...form,
-                    movementTypeId: e.target.value,
-                    nature: movement ? natureForTypeName(movement.name) : form.nature,
-                  });
-                }}
-              >
-                <option value="">Selecione o tipo</option>
-                {identifyTypes.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Associado (opcional)</span>
-              <select value={form.memberId} onChange={(e) => onMemberChange(e.target.value)}>
-                <option value="">Sem associado</option>
-                {(members.data ?? []).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} · {BRANCH_LABELS[m.branch]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedMember?.role === "jovem" ? (
+
+            <Pager
+              total={listing.total}
+              fromRow={listing.fromRow}
+              toRow={listing.toRow}
+              pageSize={listing.pageSize}
+              currentPage={listing.currentPage}
+              pageCount={listing.pageCount}
+              onPageSize={listing.setPageSize}
+              onPage={listing.setPage}
+            />
+          </ListingResults>
+        </article>
+      </FetchOverlay>
+
+      <AnimatePresence>
+        {open ? (
+          <Modal title={editing ? "Alterar lançamento" : "Lançamento manual"} onClose={closeForm}>
+            <form onSubmit={onSave} className={formClass("form-grid", attempted)} noValidate>
+              {error ? <div className="error wide">{error}</div> : null}
               <label className="field">
-                <span>Responsável</span>
+                <span>Vencimento</span>
+                <input
+                  required
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
+              </label>
+              <label className="field">
+                <span>Situação</span>
                 <select
-                  value={form.memberGuardianId}
-                  onChange={(e) => setForm({ ...form, memberGuardianId: e.target.value })}
+                  required
+                  value={form.paymentStatus}
+                  onChange={(e) => setForm({ ...form, paymentStatus: e.target.value as TxPaymentStatus })}
                 >
-                  <option value="">Não informar</option>
-                  {selectedGuardians.map((guardian) => (
-                    <option key={guardian.id} value={guardian.id}>
-                      {guardian.name} · {guardian.relationship}
+                  <option value="paid">Pago</option>
+                  <option value="pending">Pendente</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Entrada ou saída</span>
+                <select
+                  required
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as TxType, movementTypeId: "" })}
+                >
+                  <option value="income">Entrada</option>
+                  <option value="expense">Saída</option>
+                </select>
+              </label>
+              <div className="field">
+                <span>
+                  Conta fixa ou variável
+                  <abbr className="req" title="Obrigatório">
+                    *
+                  </abbr>
+                </span>
+                <div className="flag-row">
+                  <button
+                    type="button"
+                    className={`flag ${form.nature === "fixed" ? "is-on" : ""}`}
+                    onClick={() => setForm({ ...form, nature: "fixed" })}
+                  >
+                    Fixa
+                  </button>
+                  <button
+                    type="button"
+                    className={`flag ${form.nature === "variable" ? "is-on" : ""}`}
+                    onClick={() => setForm({ ...form, nature: "variable" })}
+                  >
+                    Variável
+                  </button>
+                </div>
+              </div>
+              <label className="field">
+                <span>Tipo de movimentação</span>
+                <select
+                  required
+                  value={form.movementTypeId}
+                  onChange={(e) => setForm({ ...form, movementTypeId: e.target.value })}
+                >
+                  <option value="">Selecione</option>
+                  {allowedTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {!t.active ? " (inativo)" : ""}
+                      {t.direction !== "both" && t.direction !== form.type ? " · direção diferente" : ""}
                     </option>
                   ))}
                 </select>
               </label>
-            ) : null}
-            <label className="field">
-              <span>Ramo</span>
-              <select
-                required
-                value={form.branch}
-                onChange={(e) => setForm({ ...form, branch: e.target.value as BranchId })}
-              >
-                {ALL_BRANCHES.map((id) => (
-                  <option key={id} value={id}>
-                    {BRANCH_LABELS[id]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="muted wide">
-              Natureza: {natureLabel(form.nature)} · {typeLabel(form.type)}
-              {selectedMember ? ` · ${selectedMember.name}` : ""}
-            </p>
-            <div className="modal-actions wide">
-              {identifyQueue.length > 1 ? (
-                <button className="btn btn-ghost" type="button" onClick={skipIdentify} disabled={saving}>
-                  Pular
-                </button>
-              ) : (
+              <label className="field wide">
+                <span>Descrição</span>
+                <input
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  required
+                  minLength={2}
+                />
+              </label>
+              <label className={`field${attempted && !(parseMoney(form.amount) > 0) ? " is-invalid" : ""}`}>
+                <span>Valor (R$)</span>
+                <input
+                  inputMode="numeric"
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: maskMoney(e.target.value) })}
+                  placeholder="0,00"
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>Ramo</span>
+                <select
+                  required
+                  value={form.branch}
+                  onChange={(e) => setForm({ ...form, branch: e.target.value as BranchId })}
+                >
+                  {ALL_BRANCHES.map((id) => (
+                    <option key={id} value={id}>
+                      {BRANCH_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Associado (opcional)</span>
+                <select value={form.memberId} onChange={(e) => onMemberChange(e.target.value)}>
+                  <option value="">Sem associado</option>
+                  {(members.data ?? []).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} · {BRANCH_LABELS[m.branch]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedMember?.role === "jovem" ? (
+                <label className="field">
+                  <span>Responsável</span>
+                  <select
+                    value={form.memberGuardianId}
+                    onChange={(e) => setForm({ ...form, memberGuardianId: e.target.value })}
+                  >
+                    <option value="">Não informar</option>
+                    {selectedGuardians.map((guardian) => (
+                      <option key={guardian.id} value={guardian.id}>
+                        {guardian.name} · {guardian.relationship}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedGuardians.length === 0 ? (
+                    <span className="muted">Cadastre o responsável no associado para vincular neste lançamento.</span>
+                  ) : null}
+                </label>
+              ) : null}
+              <label className="field">
+                <span>Conta do pagamento</span>
+                <select
+                  value={form.memberAccountId}
+                  onChange={(e) => setForm({ ...form, memberAccountId: e.target.value })}
+                  disabled={!selectedMember}
+                >
+                  <option value="">Não informar</option>
+                  {(selectedMember?.accounts ?? []).map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.holderName} · {a.relationship}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Projeto financeiro</span>
+                <select value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}>
+                  <option value="">Nenhum</option>
+                  {(projects.data ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Meio</span>
+                <select
+                  required
+                  value={form.method}
+                  onChange={(e) => setForm({ ...form, method: e.target.value as PaymentMethod })}
+                >
+                  <option value="pix">Pix</option>
+                  <option value="transfer">Transferência</option>
+                  <option value="cash">Dinheiro</option>
+                  <option value="card">Cartão</option>
+                  <option value="other">Outro</option>
+                </select>
+              </label>
+              <p className="muted wide">
+                Natureza: {natureLabel(form.nature)} · {typeLabel(form.type)}
+                {selectedMember ? ` · ${selectedMember.name}` : ""}
+              </p>
+              <div className="modal-actions wide">
                 <button className="btn btn-ghost" type="button" onClick={closeForm} disabled={saving}>
                   Cancelar
                 </button>
-              )}
-              <SubmitButton busy={saving} busyLabel="Identificando…">
-                Identificar
-              </SubmitButton>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
+                <SubmitButton busy={saving} busyLabel={editing ? "Salvando…" : "Lançando…"}>
+                  {editing ? "Salvar alteração" : "Lançar"}
+                </SubmitButton>
+              </div>
+            </form>
+          </Modal>
+        ) : null}
+        {identifying ? (
+          <Modal
+            title={
+              identifyQueue.length > 1
+                ? `Identificar lançamento · ${identifyIndex + 1} de ${identifyQueue.length}`
+                : "Identificar lançamento"
+            }
+            onClose={closeForm}
+          >
+            <form onSubmit={(event) => void onIdentify(event)} className={formClass("form-grid", attempted)} noValidate>
+              {error ? <div className="error wide">{error}</div> : null}
+              <p className="muted wide">
+                {formatDate(identifying.date)} · {typeLabel(identifying.type)} · {brl(identifying.amount)}
+                <br />
+                {identifying.description}
+              </p>
+              <label className="field wide">
+                <span>
+                  Tipo de movimentação
+                  <abbr className="req" title="Obrigatório">
+                    *
+                  </abbr>
+                </span>
+                <select
+                  required
+                  value={form.movementTypeId}
+                  onChange={(e) => {
+                    const movement = (types.data ?? []).find((item) => item.id === e.target.value);
+                    setForm({
+                      ...form,
+                      movementTypeId: e.target.value,
+                      nature: movement ? natureForTypeName(movement.name) : form.nature,
+                    });
+                  }}
+                >
+                  <option value="">Selecione o tipo</option>
+                  {identifyTypes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Associado (opcional)</span>
+                <select value={form.memberId} onChange={(e) => onMemberChange(e.target.value)}>
+                  <option value="">Sem associado</option>
+                  {(members.data ?? []).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} · {BRANCH_LABELS[m.branch]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedMember?.role === "jovem" ? (
+                <label className="field">
+                  <span>Responsável</span>
+                  <select
+                    value={form.memberGuardianId}
+                    onChange={(e) => setForm({ ...form, memberGuardianId: e.target.value })}
+                  >
+                    <option value="">Não informar</option>
+                    {selectedGuardians.map((guardian) => (
+                      <option key={guardian.id} value={guardian.id}>
+                        {guardian.name} · {guardian.relationship}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="field">
+                <span>Ramo</span>
+                <select
+                  required
+                  value={form.branch}
+                  onChange={(e) => setForm({ ...form, branch: e.target.value as BranchId })}
+                >
+                  {ALL_BRANCHES.map((id) => (
+                    <option key={id} value={id}>
+                      {BRANCH_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="muted wide">
+                Natureza: {natureLabel(form.nature)} · {typeLabel(form.type)}
+                {selectedMember ? ` · ${selectedMember.name}` : ""}
+              </p>
+              <div className="modal-actions wide">
+                {identifyQueue.length > 1 ? (
+                  <button className="btn btn-ghost" type="button" onClick={skipIdentify} disabled={saving}>
+                    Pular
+                  </button>
+                ) : (
+                  <button className="btn btn-ghost" type="button" onClick={closeForm} disabled={saving}>
+                    Cancelar
+                  </button>
+                )}
+                <SubmitButton busy={saving} busyLabel="Identificando…">
+                  Identificar
+                </SubmitButton>
+              </div>
+            </form>
+          </Modal>
+        ) : null}
+        {splitting ? (
+          <Modal title="Ratear lançamento" onClose={() => setSplitting(null)}>
+            <form onSubmit={(event) => void saveSplit(event)} className={formClass("form-grid", attempted)} noValidate>
+              {error ? <div className="error wide">{error}</div> : null}
+              <p className="muted wide">
+                {formatDate(splitting.date)} · {brl(splitting.amount)} · {splitting.description}. A soma das partes
+                precisa ser exatamente esse valor.
+              </p>
+              {splitParts.map((part, index) => (
+                <div key={index} className="wide form-grid">
+                  <label className="field">
+                    <span>Parte {index + 1} (R$)</span>
+                    <input
+                      required
+                      inputMode="decimal"
+                      value={part.amount}
+                      onChange={(e) => {
+                        const next = [...splitParts];
+                        next[index] = { ...part, amount: maskMoney(e.target.value) };
+                        setSplitParts(next);
+                      }}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Tipo</span>
+                    <select
+                      required
+                      value={part.movementTypeId}
+                      onChange={(e) => {
+                        const next = [...splitParts];
+                        next[index] = { ...part, movementTypeId: e.target.value };
+                        setSplitParts(next);
+                      }}
+                    >
+                      <option value="">Selecione</option>
+                      {(types.data ?? [])
+                        .filter(
+                          (item) => item.active && (item.direction === "both" || item.direction === splitting.type),
+                        )
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="field wide">
+                    <span>Descrição</span>
+                    <input
+                      required
+                      minLength={2}
+                      value={part.description}
+                      onChange={(e) => {
+                        const next = [...splitParts];
+                        next[index] = { ...part, description: e.target.value };
+                        setSplitParts(next);
+                      }}
+                    />
+                  </label>
+                </div>
+              ))}
+              <div className="modal-actions wide">
+                <button
+                  className="btn btn-outline"
+                  type="button"
+                  onClick={() => setSplitParts([...splitParts, { amount: "", movementTypeId: "", description: "" }])}
+                >
+                  Outra parte
+                </button>
+                <button className="btn btn-ghost" type="button" onClick={() => setSplitting(null)} disabled={saving}>
+                  Cancelar
+                </button>
+                <SubmitButton busy={saving} busyLabel="Rateando…">
+                  Ratear
+                </SubmitButton>
+              </div>
+            </form>
+          </Modal>
+        ) : null}
       </AnimatePresence>
     </div>
   );

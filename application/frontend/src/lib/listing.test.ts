@@ -37,7 +37,7 @@ describe("paginate", () => {
 
 describe("listing busy", () => {
   it("keeps a visible filter delay", () => {
-    expect(LISTING_BUSY_MS).toBeGreaterThanOrEqual(400);
+    expect(LISTING_BUSY_MS).toBeGreaterThanOrEqual(280);
   });
 });
 

@@ -3,7 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "description": "Sistema de controle financeiro do Grupo Escoteiro Arno Friedrich",
-  "workspaces": ["frontend", "backend"],
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "dev:api": "npm run dev -w backend",
@@ -15,7 +18,7 @@
     "test": "npm run test:unit && npm run test:int && npm run test:e2e",
     "test:unit": "npm run test:unit -w frontend && npm run test:unit -w backend",
     "test:int": "npm run test:int -w backend",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright install chromium && playwright test"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

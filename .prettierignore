@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+blob-report
+package-lock.json
+*.tsbuildinfo
+application/backend/data
+site/src/assets
+*.min.js
+*.min.css

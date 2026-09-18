@@ -1,4 +1,4 @@
-import "../../src/env.js";
+import "../../src/shared/env.js";
 import { TEST_ADMIN_USER, TEST_PASSWORD, TEST_TREASURER_USER } from "./credentials.js";
 
 const configured = process.env.DATABASE_URL;
@@ -14,14 +14,15 @@ process.env.DATABASE_URL = configured.replace(/\/[^/?]+(\?.*)?$/, "/tesouraria_t
 process.env.AUTH_SECRET ??= "test-secret";
 process.env.ADMIN_USER = TEST_TREASURER_USER;
 process.env.ADMIN_PASSWORD = TEST_PASSWORD;
+process.env.MAIL_MOCK = "1";
 
 import { ensureTestDatabase } from "./ensure-db.js";
 
 await ensureTestDatabase();
-const { pool, waitForDb } = await import("../../src/db.js");
+const { pool, waitForDb } = await import("../../src/shared/db.js");
 const { migrate } = await import("../../src/migrate.js");
-const { seedIfEmpty } = await import("../../src/store.js");
-const { hashPassword } = await import("../../src/password.js");
+const { seedIfEmpty } = await import("../../src/shared/persistence/finance-store.js");
+const { hashPassword } = await import("../../src/shared/auth/password.js");
 await waitForDb(10);
 await migrate();
 await seedIfEmpty();

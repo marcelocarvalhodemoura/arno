@@ -1,11 +1,4 @@
-export type BranchId =
-  | "filhote"
-  | "lobinho"
-  | "escoteiro"
-  | "senior"
-  | "pioneiro"
-  | "flor-de-lis"
-  | "grupo";
+export type BranchId = "filhote" | "lobinho" | "escoteiro" | "senior" | "pioneiro" | "flor-de-lis" | "grupo";
 
 export type YouthBranchId = Exclude<BranchId, "grupo">;
 
@@ -32,7 +25,9 @@ export type GuardianRelationship =
   | "Outro";
 export type ReportGroupBy = "none" | "month" | "branch" | "movementType" | "nature";
 export type UserRole = "admin" | "tesoureiro";
-export type RecordOrigin = "manual" | "integration";
+export type RecordOrigin = "manual" | "integration" | "sicredi";
+export type BankProvider = "sicredi";
+export type BankMovementStatus = "new" | "matched" | "imported";
 
 export interface AuditInfo {
   origin: RecordOrigin;
@@ -48,6 +43,7 @@ export const DASHBOARD_BRANCHES: BranchId[] = [
   "escoteiro",
   "senior",
   "pioneiro",
+  "flor-de-lis",
   "grupo",
 ];
 
@@ -134,8 +130,8 @@ export const ALL_BRANCHES: BranchId[] = [
   "escoteiro",
   "senior",
   "pioneiro",
-  "grupo",
   "flor-de-lis",
+  "grupo",
 ];
 
 export const GUARDIAN_RELATIONSHIPS: GuardianRelationship[] = [
@@ -246,6 +242,7 @@ export interface Transaction {
   memberGuardianId?: string;
   projectId?: string;
   notes?: string;
+  externalId?: string;
   createdBy?: string;
   createdAt: string;
   updatedAt?: string;
@@ -253,11 +250,31 @@ export interface Transaction {
   origin: RecordOrigin;
 }
 
+export interface BankMovement {
+  id: string;
+  provider: BankProvider;
+  externalId: string;
+  occurredAt: string;
+  date: string;
+  amount: number;
+  type: TxType;
+  method: PaymentMethod;
+  description: string;
+  payerName: string;
+  payerDocument: string;
+  txid: string;
+  status: BankMovementStatus;
+  transactionId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface ProjectItem {
   id: string;
   category: string;
   description: string;
   planned: number;
+  movementTypeId?: string;
 }
 
 export interface FinancialProject {
@@ -277,6 +294,45 @@ export interface FinancialProject {
 export interface Settings {
   openingBalance: number;
   groupName: string;
+  mensalidadeDueDay?: number;
+}
+
+export type MensalidadeCellStatus = "paid" | "pending" | "overdue" | "none";
+
+export interface MensalidadeCell {
+  month: number;
+  dueDate: string | null;
+  status: MensalidadeCellStatus;
+  transactionId?: string;
+  amount: number;
+}
+
+export interface MensalidadeRow {
+  memberId: string;
+  name: string;
+  branch: YouthBranchId;
+  role: MemberRole;
+  memberStatus: MemberStatus;
+  joinedAt: string;
+  dueDay: number;
+  monthlyFee: number;
+  lateFee: number;
+  clubeLtc: boolean;
+  cells: MensalidadeCell[];
+}
+
+export interface MensalidadeReport {
+  year: number;
+  dueDay: number;
+  months: number[];
+  rows: MensalidadeRow[];
+  summary: {
+    paid: number;
+    pending: number;
+    overdue: number;
+    openAmount: number;
+    paidAmount: number;
+  };
 }
 
 export interface DatabaseShape {
@@ -358,5 +414,67 @@ export interface DashboardPayload {
     expense: number;
     members: number;
   }[];
-  chart: { month: string; income: number; expense: number }[];
+  chart: { month: string; income: number; expense: number; balance: number }[];
+}
+
+/** Padrão do cartaz; o valor vigente fica em Configurações (`mensalidadeDueDay`). */
+export const DEFAULT_MENSALIDADE_DUE_DAY = 10;
+
+export function resolveMensalidadeDueDay(value?: number | null): number {
+  const day = Number(value);
+  if (!Number.isInteger(day) || day < 1 || day > 31) return DEFAULT_MENSALIDADE_DUE_DAY;
+  return day;
+}
+
+export const MENSALIDADE_TABLE = {
+  baseRegular: 75,
+  basePioneer: 25,
+  extra: 4.5,
+  punctual: 10,
+  late: 20,
+} as const;
+
+export type MensalidadeProfile = {
+  branch: string;
+  clubeLtc: boolean;
+};
+
+function money(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+export function amountsNear(a: number, b: number): boolean {
+  return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < 0.05;
+}
+
+export function mensalidadeBase(branch: string): number {
+  return branch === "pioneiro" ? MENSALIDADE_TABLE.basePioneer : MENSALIDADE_TABLE.baseRegular;
+}
+
+export function onTimeMonthlyFee(profile: MensalidadeProfile): number {
+  const base = mensalidadeBase(profile.branch);
+  if (profile.clubeLtc) return base;
+  return money(base + MENSALIDADE_TABLE.punctual + MENSALIDADE_TABLE.extra);
+}
+
+export function lateMonthlyFee(profile: MensalidadeProfile): number {
+  const base = mensalidadeBase(profile.branch);
+  if (profile.clubeLtc) return base;
+  return money(base + MENSALIDADE_TABLE.late + MENSALIDADE_TABLE.extra);
+}
+
+export function expectedMonthlyFee(profile: MensalidadeProfile, dueDate: string, today: string): number {
+  return dueDate < today ? lateMonthlyFee(profile) : onTimeMonthlyFee(profile);
+}
+
+export function isOfficialMensalidadeAmount(profile: MensalidadeProfile, amount: number): boolean {
+  return amountsNear(amount, onTimeMonthlyFee(profile)) || amountsNear(amount, lateMonthlyFee(profile));
+}
+
+export function matchesMensalidadeAmount(
+  profile: MensalidadeProfile & { monthlyFee?: number },
+  amount: number,
+): boolean {
+  if (profile.monthlyFee !== undefined && amountsNear(amount, profile.monthlyFee)) return true;
+  return isOfficialMensalidadeAmount(profile, amount);
 }

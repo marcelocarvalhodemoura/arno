@@ -16,11 +16,20 @@ export default function ListingResults({
   filterLabel = "Filtrando…",
   children,
 }: Props) {
-  const active = fetching || filtering;
-
   return (
-    <FetchOverlay active={active} label={fetching ? fetchLabel : filterLabel}>
-      <div className="listing-results">{children}</div>
+    <FetchOverlay active={fetching} label={fetchLabel}>
+      <div
+        className={`listing-results${filtering && !fetching ? " is-filtering" : ""}`}
+        aria-busy={fetching || filtering}
+        data-filter-label={filtering && !fetching ? filterLabel : undefined}
+      >
+        {children}
+        {filtering && !fetching ? (
+          <span className="sr-only" role="status">
+            {filterLabel}
+          </span>
+        ) : null}
+      </div>
     </FetchOverlay>
   );
 }

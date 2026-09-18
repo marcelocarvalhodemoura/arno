@@ -3,10 +3,18 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
-import { router } from "./routes.js";
+import { requireAuth } from "./shared/auth/auth.js";
+import { identityPublicRouter, identityRouter } from "./identity/routes.js";
+import { catalogRouter } from "./catalog/routes.js";
+import { membersRouter } from "./members/routes.js";
+import { ledgerRouter } from "./ledger/routes.js";
+import { reportsRouter } from "./reports/routes.js";
+import { projectsRouter } from "./projects/routes.js";
+import { mensalidadesRouter } from "./mensalidades/routes.js";
+import { statementRouter } from "./statement/routes.js";
+import { bankingPublicRouter, bankingRouter } from "./banking/routes.js";
+import { notificationsRouter, whatsappWebhookRouter } from "./notifications/routes.js";
 
-// Em produção a API também entrega a interface, para que o frontend continue
-// chamando /api na mesma origem sem proxy nem CORS.
 const frontendDist = resolve(dirname(fileURLToPath(import.meta.url)), "../../frontend/dist");
 
 export function createApp() {
@@ -18,27 +26,33 @@ export function createApp() {
     res.json({ ok: true, service: "arno-financeiro" });
   });
 
-  app.use("/api", router);
+  app.use("/webhook", whatsappWebhookRouter);
+  app.use("/api", identityPublicRouter);
+  app.use("/api", bankingPublicRouter);
+  app.use("/api/integrations/whatsapp/webhook", whatsappWebhookRouter);
+  app.use("/api", requireAuth);
+  app.use("/api", identityRouter);
+  app.use("/api", catalogRouter);
+  app.use("/api", membersRouter);
+  app.use("/api", ledgerRouter);
+  app.use("/api", reportsRouter);
+  app.use("/api", projectsRouter);
+  app.use("/api", mensalidadesRouter);
+  app.use("/api", statementRouter);
+  app.use("/api", bankingRouter);
+  app.use("/api", notificationsRouter);
 
   if (existsSync(frontendDist)) {
     app.use(express.static(frontendDist));
-    // Roteamento do React Router: o que não é /api cai no index.html.
     app.get(/^(?!\/api\/).*/, (_req, res) => {
       res.sendFile(join(frontendDist, "index.html"));
     });
   }
 
-  app.use(
-    (
-      err: Error,
-      _req: express.Request,
-      res: express.Response,
-      _next: express.NextFunction,
-    ) => {
-      console.error(err);
-      res.status(500).json({ error: "Erro interno" });
-    },
-  );
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error(err);
+    res.status(500).json({ error: "Erro interno" });
+  });
 
   return app;
 }

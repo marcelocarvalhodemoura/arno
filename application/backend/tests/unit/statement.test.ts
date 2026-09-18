@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpretStatement, isUnidentifiedName, matchMember } from "../../src/statement.js";
+import { interpretStatement, isUnidentifiedName, matchMember } from "../../src/statement/statement.js";
 
 const catalog = {
   movementTypes: [
@@ -49,6 +49,18 @@ describe("interpretStatement", () => {
     expect(result.rows[0]?.movementTypeId).toBe("mt-doa");
     expect(result.rows[0]?.memberId).toBe("m-ana");
     expect(result.rows[0]?.confidence).toBe("high");
+  });
+
+  it("matches the late mensalidade amount from the poster", () => {
+    const result = interpretStatement(
+      `Data;Histórico;Valor
+11/09/2026;PIX RECEBIDO ANA SOUZA MENSALIDADE;99,50
+`,
+      catalog,
+    );
+    expect(result.rows[0]?.movementTypeName).toBe("Mensalidade");
+    expect(result.rows[0]?.memberId).toBe("m-ana");
+    expect(result.rows[0]?.amount).toBe(99.5);
   });
 
   it("classifies a bank statement with pix and associate", () => {

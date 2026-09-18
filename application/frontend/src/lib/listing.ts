@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export const PAGE_SIZES = [10, 15, 20, 50] as const;
-export const LISTING_BUSY_MS = 500;
+export const LISTING_BUSY_MS = 360;
 export type PageSize = (typeof PAGE_SIZES)[number];
 
 export type PageSlice<T> = {
@@ -29,10 +29,7 @@ export function paginate<T>(items: T[], page: number, pageSize: number): PageSli
   };
 }
 
-export function matchesQuery(
-  term: string,
-  fields: Array<string | number | boolean | null | undefined>,
-): boolean {
+export function matchesQuery(term: string, fields: Array<string | number | boolean | null | undefined>): boolean {
   const query = term.trim().toLowerCase();
   if (!query) return true;
   return fields

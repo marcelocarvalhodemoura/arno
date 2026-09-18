@@ -49,7 +49,7 @@ describe("workbookToCsv", () => {
     expect(mapped.ok).toBe(true);
     if (mapped.ok) {
       expect(mapped.value.name).toBe("João da Silva");
-      expect(mapped.value.monthlyFee).toBe(60);
+      expect(mapped.value.monthlyFee).toBe(89.5);
       expect(mapped.value.joinedAt).toBe("2026-03-01");
     }
   });

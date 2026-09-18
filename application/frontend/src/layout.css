@@ -5,7 +5,7 @@
   grid-template-columns: var(--sidebar) 1fr;
   overflow: hidden;
   animation: shell-in 0.4s var(--ease);
-  transition: grid-template-columns 0.28s var(--ease);
+  transition: grid-template-columns 0.4s var(--ease);
 }
 
 .shell.is-collapsed {
@@ -31,7 +31,7 @@
   top: 0;
   height: 100vh;
   min-width: 0;
-  transition: padding 0.28s var(--ease);
+  transition: padding 0.4s var(--ease);
 }
 
 .sidebar.is-collapsed {
@@ -81,7 +81,9 @@
   background: transparent;
   color: var(--cream);
   cursor: pointer;
-  transition: background 0.25s var(--ease), color 0.25s var(--ease);
+  transition:
+    background 0.25s var(--ease),
+    color 0.25s var(--ease);
 }
 
 .sidebar__toggle:hover,
@@ -133,7 +135,10 @@
   font-weight: 500;
   font-size: 0.92rem;
   white-space: nowrap;
-  transition: background 0.25s var(--ease), color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+  transition:
+    background 0.32s var(--ease),
+    color 0.32s var(--ease),
+    box-shadow 0.32s var(--ease);
 }
 
 .side-link svg {
@@ -176,6 +181,7 @@
   opacity: 0;
   pointer-events: none;
   z-index: 6;
+  transition: opacity 0.22s var(--ease);
 }
 
 .sidebar.is-collapsed .side-link:hover .side-link__label,

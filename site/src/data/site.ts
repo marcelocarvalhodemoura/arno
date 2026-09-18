@@ -1,24 +1,27 @@
+import photoNatureza from "../assets/photos/natureza.jpg";
+import photoTropa from "../assets/photos/tropa-lis.jpg";
+import photoAperto from "../assets/photos/aperto.jpg";
+import photoTrilhaPedra from "../assets/photos/trilha-pedra.jpg";
+import photoGuaiba from "../assets/photos/vista-guaiba.jpg";
+import photoPatrulha from "../assets/photos/patrulha.jpg";
+import photoHero from "../assets/photos/hero-grupo.jpg";
+import photoEntrada from "../assets/photos/grupo-entrada.jpg";
+import photoSede from "../assets/photos/sede.jpg";
+import photoAtividade from "../assets/photos/atividade.jpg";
+import photoTrilhaJovens from "../assets/photos/trilha-jovens.jpg";
+
 export const images = {
-  forest:
-    "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80",
-  camp:
-    "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=1920&q=80",
-  fire:
-    "https://images.unsplash.com/photo-1533873984035-25970ab07461?auto=format&fit=crop&w=1600&q=80",
-  hike:
-    "https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=1600&q=80",
-  lake:
-    "https://images.unsplash.com/photo-1432405976525-a7695569c3d0?auto=format&fit=crop&w=1600&q=80",
-  kids:
-    "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&w=1600&q=80",
-  night:
-    "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=1920&q=80",
-  trail:
-    "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80",
-  community:
-    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1600&q=80",
-  map:
-    "https://images.unsplash.com/photo-1487730117640-ac52fc5ddb69?auto=format&fit=crop&w=1200&q=80",
+  forest: photoNatureza,
+  camp: photoTropa,
+  fire: photoAperto,
+  hike: photoTrilhaPedra,
+  lake: photoGuaiba,
+  kids: photoPatrulha,
+  night: photoHero,
+  trail: photoEntrada,
+  community: photoSede,
+  map: photoAtividade,
+  summit: photoTrilhaJovens,
 };
 
 export const site = {
@@ -97,8 +100,7 @@ export const ramos = [
     tone: "gold",
     lema: "Melhor Possível",
     marco: "Ser Livre como os Lobos",
-    summary:
-      "Socialização na Selva da Jângal. Matilhas, jogos e o primeiro compromisso com a Lei do Lobinho.",
+    summary: "Socialização na Selva da Jângal. Matilhas, jogos e o primeiro compromisso com a Lei do Lobinho.",
     details:
       "Concebido para crianças de seis anos e meio a dez anos, o Ramo Lobinho concentra a ênfase educativa no processo de socialização. O marco simbólico é “Ser Livre como os Lobos”, ligado ao Livro da Jângal, de Rudyard Kipling. A Alcateia reúne até 24 crianças, organizadas em Matilhas de quatro a seis integrantes.",
   },
@@ -112,8 +114,7 @@ export const ramos = [
     tone: "pine",
     lema: "Sempre Alerta",
     marco: "Descobrir novos territórios com um grupo de amigos",
-    summary:
-      "Autonomia na patrulha. Vida em equipe, natureza e a Promessa Escoteira como bússola.",
+    summary: "Autonomia na patrulha. Vida em equipe, natureza e a Promessa Escoteira como bússola.",
     details:
       "Para adolescentes de 11 a 14 anos, o Ramo Escoteiro enfatiza a criação e a ampliação da autonomia. O programa se fundamenta na vida em equipe e no encontro com a natureza. A Tropa tem efetivo máximo de 32 jovens, em Patrulhas de 4 a 8 integrantes — base permanente para acampamentos, jogos e serviço.",
   },
@@ -127,8 +128,7 @@ export const ramos = [
     tone: "clay",
     lema: "Sempre Alerta",
     marco: "Viver aventuras, superar desafios",
-    summary:
-      "Autoconhecimento e identidade. Aventura, desafio e a formação do caráter na adolescência.",
+    summary: "Autoconhecimento e identidade. Aventura, desafio e a formação do caráter na adolescência.",
     details:
       "O Ramo Sênior atende jovens de 15 a 17 anos — Seniores e Guias. A ênfase educativa é o autoconhecimento, a aceitação e o aprimoramento das características pessoais, auxiliando o jovem a formar sua identidade. A Tropa Sênior (ou Tropa de Guias) tem efetivo máximo de 32 jovens.",
   },
@@ -142,8 +142,7 @@ export const ramos = [
     tone: "wine",
     lema: "Servir",
     marco: "Explorar o mundo, ampliar horizontes",
-    summary:
-      "Cidadania em ato. Projetos, Equipes de Interesse e a Partida antes dos 22 anos.",
+    summary: "Cidadania em ato. Projetos, Equipes de Interesse e a Partida antes dos 22 anos.",
     details:
       "O Ramo Pioneiro é para jovens de 18 a 22 anos incompletos. A ênfase é ampliar a visão de mundo e viver a cidadania, colocando em prática os valores da Promessa e da Lei no círculo mais amplo da vida adulta. O Clã é misto, sem efetivo máximo, e organiza Equipes de Interesse para projetos e serviço. A saída ocorre na Cerimônia de Partida, antes de completar 22 anos.",
   },
@@ -205,32 +204,28 @@ export const activities = [
     id: 3,
     title: "Trilhas e expedições",
     tag: "Aventura",
-    description:
-      "Caminhadas, orientação e desafios progressivos — do parque urbano à serra gaúcha.",
+    description: "Caminhadas, orientação e desafios progressivos — do parque urbano à serra gaúcha.",
     image: images.hike,
   },
   {
     id: 4,
     title: "Técnicas e especialidades",
     tag: "Saber",
-    description:
-      "Primeiros socorros, nós, pioneirias, astronomia, comunicação e dezenas de especialidades da UEB.",
+    description: "Primeiros socorros, nós, pioneirias, astronomia, comunicação e dezenas de especialidades da UEB.",
     image: images.map,
   },
   {
     id: 5,
     title: "Jogos escoteiros",
     tag: "Método",
-    description:
-      "O jogo como ferramenta educativa: estratégia, corpo, imaginação e o prazer de estar junto.",
+    description: "O jogo como ferramenta educativa: estratégia, corpo, imaginação e o prazer de estar junto.",
     image: images.kids,
   },
   {
     id: 6,
     title: "Guardiões da natureza",
     tag: "Ambiente",
-    description:
-      "Plantio, educação ambiental e o compromisso da Lei: ser bom para os animais e as plantas.",
+    description: "Plantio, educação ambiental e o compromisso da Lei: ser bom para os animais e as plantas.",
     image: images.forest,
   },
 ];
@@ -240,8 +235,7 @@ export const events = [
     id: 1,
     date: "2026-09-12",
     title: "Reunião de boas-vindas às famílias",
-    description:
-      "Conheça a sede, as chefias e o método. Ideal para quem pensa em ingressar neste semestre.",
+    description: "Conheça a sede, as chefias e o método. Ideal para quem pensa em ingressar neste semestre.",
     time: "14:30 – 17:30",
     tag: "Aberto",
   },
@@ -249,8 +243,7 @@ export const events = [
     id: 2,
     date: "2026-09-26",
     title: "Acampamento de primavera",
-    description:
-      "Fim de semana em campo para Alcateia, Tropas e Clã, com atividades por ramo e fogueira conjunta.",
+    description: "Fim de semana em campo para Alcateia, Tropas e Clã, com atividades por ramo e fogueira conjunta.",
     time: "Sexta a domingo",
     tag: "Campo",
   },
@@ -258,8 +251,7 @@ export const events = [
     id: 3,
     date: "2026-10-10",
     title: "Oficina de primeiros socorros",
-    description:
-      "Treinamento prático com instrutores voluntários. Aberto a jovens a partir do Ramo Escoteiro.",
+    description: "Treinamento prático com instrutores voluntários. Aberto a jovens a partir do Ramo Escoteiro.",
     time: "09:00 – 12:00",
     tag: "Formação",
   },
@@ -267,8 +259,7 @@ export const events = [
     id: 4,
     date: "2026-10-24",
     title: "Mutirão no Lindóia",
-    description:
-      "Ação de serviço no entorno da sede: limpeza, plantio e convivência com a comunidade.",
+    description: "Ação de serviço no entorno da sede: limpeza, plantio e convivência com a comunidade.",
     time: "14:30 – 17:30",
     tag: "Serviço",
   },
@@ -276,8 +267,7 @@ export const events = [
     id: 5,
     date: "2026-11-07",
     title: "Jornada de especialidades",
-    description:
-      "Ateliês simultâneos de culinária, orientação, comunicação e artes — o jovem escolhe o desafio.",
+    description: "Ateliês simultâneos de culinária, orientação, comunicação e artes — o jovem escolhe o desafio.",
     time: "14:30 – 17:30",
     tag: "Sede",
   },
@@ -287,20 +277,17 @@ export const news = [
   {
     date: "22 Ago 2026",
     title: "Inscrições abertas para o segundo semestre",
-    excerpt:
-      "Há vagas na Alcateia e na Tropa Escoteira. A primeira reunião pode ser experimental, sem compromisso.",
+    excerpt: "Há vagas na Alcateia e na Tropa Escoteira. A primeira reunião pode ser experimental, sem compromisso.",
   },
   {
     date: "08 Ago 2026",
     title: "Projeto de arborização no bairro",
-    excerpt:
-      "Jovens do Ramo Sênior lideram o plantio de mudas nativas em parceria com moradores do Lindóia.",
+    excerpt: "Jovens do Ramo Sênior lideram o plantio de mudas nativas em parceria com moradores do Lindóia.",
   },
   {
     date: "19 Jul 2026",
     title: "Acampamento de inverno: o que aprendemos",
-    excerpt:
-      "Frio, fogueira e patrulhas autônomas. Um relato do campo que marcou o meio do ano.",
+    excerpt: "Frio, fogueira e patrulhas autônomas. Um relato do campo que marcou o meio do ano.",
   },
 ];
 

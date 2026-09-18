@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { detectHeaderIndex, heuristicMapping, remapImportCsv } from "../../src/import-map.js";
-import { interpretStatement } from "../../src/statement.js";
+import { detectHeaderIndex, heuristicMapping, remapImportCsv } from "../../src/statement/import-map.js";
+import { interpretStatement } from "../../src/statement/statement.js";
 
 const catalog = {
   movementTypes: [
@@ -82,6 +82,16 @@ Ana Souza;ana@arnofriedrich.org.br;(51) 99999-1001;Lobinho;jovem;55,00;11/03/202
     );
     expect(remapped.sample.rows[0]?.nome).toBe("Ana Souza");
     expect(remapped.review.ok).toBe(true);
+  });
+
+  it("keeps a second responsible when remapping associate columns", async () => {
+    const csv = `nome;email;telefone;ramo;papel;mensalidade;ingresso;clube_ltc;responsavel;parentesco;responsavel_2;parentesco_2
+Ana Souza;ana@arnofriedrich.org.br;(51) 99999-1001;Lobinho;jovem;55,00;11/03/2023;não;Helena Souza;Mãe;Carlos Souza;Pai
+`;
+    const remapped = await remapImportCsv(csv, "members");
+    expect(remapped.table.rows[0]?.responsavel).toBe("Helena Souza");
+    expect(remapped.table.rows[0]?.responsavel_2).toBe("Carlos Souza");
+    expect(remapped.mapping.guardianName2).toBe("responsavel_2");
   });
 
   it("samples several rows so the treasurer can validate before import", async () => {

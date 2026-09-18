@@ -11,11 +11,14 @@ import CashFlow from "./pages/CashFlow";
 import Dashboard from "./pages/Dashboard";
 import Fees from "./pages/Fees";
 import Integration from "./pages/Integration";
+import { routerBasename } from "./base";
 import Login from "./pages/Login";
 import Members from "./pages/Members";
+import Mensalidades from "./pages/Mensalidades";
 import MovementTypes from "./pages/MovementTypes";
 import Projects from "./pages/Projects";
 import Reports from "./pages/Reports";
+import SettingsPage from "./pages/Settings";
 import Users from "./pages/Users";
 
 function Guard({ children, roles }: { children: ReactNode; roles?: UserRole[] }) {
@@ -73,6 +76,7 @@ function AppRoutes() {
                 }
               />
               <Route path="fluxo" element={<CashFlow />} />
+              <Route path="mensalidades" element={<Mensalidades />} />
               <Route path="integracao" element={<Integration />} />
               <Route path="tipos" element={<MovementTypes />} />
               <Route path="taxas" element={<Fees />} />
@@ -90,6 +94,14 @@ function AppRoutes() {
                 element={
                   <Guard roles={["admin"]}>
                     <Reports />
+                  </Guard>
+                }
+              />
+              <Route
+                path="configuracoes"
+                element={
+                  <Guard roles={["admin"]}>
+                    <SettingsPage />
                   </Guard>
                 }
               />
@@ -131,7 +143,7 @@ export default function App() {
       <AuthProvider>
         <LoadingProvider>
           <ToastProvider>
-            <BrowserRouter>
+            <BrowserRouter basename={routerBasename}>
               <AppRoutes />
             </BrowserRouter>
           </ToastProvider>

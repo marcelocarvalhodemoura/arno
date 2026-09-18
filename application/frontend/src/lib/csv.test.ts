@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  mapMemberRow,
-  mapTxRow,
-  parseCsv,
-  parseIsoDate,
-  parseBranch,
-  parseTxType,
-} from "./csv";
+import { mapMemberRow, mapTxRow, parseCsv, parseIsoDate, parseBranch, parseTxType } from "./csv";
 
 const csv = `nome;email;telefone;ramo;papel;mensalidade;ingresso;clube_ltc
 João da Silva;joao.silva@arnofriedrich.org.br;(51) 99999-1111;Escoteiro;jovem;60,00;01/03/2026;não
@@ -45,7 +38,7 @@ describe("mapMemberRow", () => {
     expect(mapped.ok).toBe(true);
     if (mapped.ok) {
       expect(mapped.value.branch).toBe("escoteiro");
-      expect(mapped.value.monthlyFee).toBe(60);
+      expect(mapped.value.monthlyFee).toBe(89.5);
       expect(mapped.value.joinedAt).toBe("2026-03-01");
       expect(mapped.value.clubeLtc).toBe(false);
     }
@@ -68,6 +61,34 @@ describe("mapMemberRow", () => {
     if (mapped.ok) {
       expect(mapped.value.guardians?.[0]?.name).toBe("Helena Souza");
       expect(mapped.value.guardians?.[0]?.relationship).toBe("Mãe");
+    }
+  });
+
+  it("maps two responsibles on the same associate row", () => {
+    const mapped = mapMemberRow({
+      nome: "Ana Souza",
+      email: "ana.souza@arnofriedrich.org.br",
+      telefone: "(51) 99999-1001",
+      ramo: "lobinho",
+      papel: "jovem",
+      mensalidade: "55,00",
+      ingresso: "11/03/2023",
+      clube_ltc: "não",
+      responsavel: "Helena Souza",
+      parentesco: "Mãe",
+      telefone_responsavel: "(51) 99999-1002",
+      email_responsavel: "helena.souza@arnofriedrich.org.br",
+      responsavel_2: "Carlos Souza",
+      parentesco_2: "Pai",
+      telefone_responsavel_2: "(51) 99999-1003",
+    });
+    expect(mapped.ok).toBe(true);
+    if (mapped.ok) {
+      expect(mapped.value.guardians).toHaveLength(2);
+      expect(mapped.value.guardians?.[0]?.name).toBe("Helena Souza");
+      expect(mapped.value.guardians?.[0]?.relationship).toBe("Mãe");
+      expect(mapped.value.guardians?.[1]?.name).toBe("Carlos Souza");
+      expect(mapped.value.guardians?.[1]?.relationship).toBe("Pai");
     }
   });
 

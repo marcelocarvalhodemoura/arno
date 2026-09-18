@@ -25,7 +25,17 @@ import Pager from "../components/Pager";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useLoadingBar } from "../context/LoadingContext";
-import { auditAction, brl, downloadCsv, formatDate, formatDateTime, natureLabel, originLabel, toCsv, typeLabel } from "../lib/format";
+import {
+  auditAction,
+  brl,
+  downloadCsv,
+  formatDate,
+  formatDateTime,
+  natureLabel,
+  originLabel,
+  toCsv,
+  typeLabel,
+} from "../lib/format";
 import { matchesQuery, usePagedList } from "../lib/listing";
 import { periodRange, usePeriod } from "../lib/period";
 
@@ -201,26 +211,28 @@ export default function Reports() {
 
   return (
     <div className="fiscal-report">
-      <PageHeader
-        kicker="Comissão fiscal"
-        title="Relatório de movimentações"
-        subtitle="Livro-caixa numerado, com saldo acumulado, para conferência criteriosa da comissão fiscal do grupo."
-        actions={
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              className="btn btn-outline"
-              type="button"
-              onClick={() => setPrinting(true)}
-              disabled={!result || printing}
-            >
-              {printing ? "Preparando…" : "Imprimir"}
-            </button>
-            <SubmitButton type="button" busy={busy} busyLabel="Gerando…" onClick={() => void run()}>
-              Gerar relatório
-            </SubmitButton>
-          </div>
-        }
-      />
+      <div className="no-print">
+        <PageHeader
+          kicker="Comissão fiscal"
+          title="Relatório de movimentações"
+          subtitle="Livro-caixa numerado, com saldo acumulado, para conferência criteriosa da comissão fiscal do grupo."
+          actions={
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="btn btn-outline"
+                type="button"
+                onClick={() => setPrinting(true)}
+                disabled={!result || printing}
+              >
+                {printing ? "Preparando…" : "Imprimir"}
+              </button>
+              <SubmitButton type="button" busy={busy} busyLabel="Gerando…" onClick={() => void run()}>
+                Gerar relatório
+              </SubmitButton>
+            </div>
+          }
+        />
+      </div>
 
       <article className="card no-print" style={{ marginBottom: 16 }}>
         <div className="form-grid">
@@ -302,21 +314,21 @@ export default function Reports() {
           <div className="field wide">
             <span>Tipos de movimentação</span>
             <FetchOverlay active={typesLoading} label="Carregando tipos…">
-            <div className="check-row">
-              {typesLoading && movementTypes.length === 0 ? (
-                <span className="muted">Carregando tipos de movimentação…</span>
-              ) : null}
-              {movementTypes.map((t) => (
-                <label key={t.id}>
-                  <input
-                    type="checkbox"
-                    checked={movementTypeIds.includes(t.id)}
-                    onChange={() => toggle(movementTypeIds, t.id, setMovementTypeIds)}
-                  />
-                  {t.name}
-                </label>
-              ))}
-            </div>
+              <div className="check-row">
+                {typesLoading && movementTypes.length === 0 ? (
+                  <span className="muted">Carregando tipos de movimentação…</span>
+                ) : null}
+                {movementTypes.map((t) => (
+                  <label key={t.id}>
+                    <input
+                      type="checkbox"
+                      checked={movementTypeIds.includes(t.id)}
+                      onChange={() => toggle(movementTypeIds, t.id, setMovementTypeIds)}
+                    />
+                    {t.name}
+                  </label>
+                ))}
+              </div>
             </FetchOverlay>
           </div>
         </div>
@@ -337,16 +349,33 @@ export default function Reports() {
                     <img src={logo} alt="Brasão do Grupo Escoteiro Arno Friedrich" />
                   </td>
                   <td className="report-letterhead__id">
+                    <span className="report-letterhead__ueb">União dos Escoteiros do Brasil</span>
                     <strong>Grupo Escoteiro Arno Friedrich</strong>
-                    <span>Registro 43/RS · União dos Escoteiros do Brasil</span>
-                    <em>Prestação de contas da tesouraria à comissão fiscal</em>
+                    <span>Registro 43/RS · Sede no Lindóia Tênis Clube · Porto Alegre</span>
+                    <span>Travessa Comandante Gustavo Cramer, 90 · Lindóia</span>
+                    <em>Prestação de contas à comissão fiscal</em>
                   </td>
                   <td className="report-letterhead__period">
+                    <span>Documento</span>
+                    <strong>Livro-caixa</strong>
                     <span>Período apurado</span>
                     <strong>
                       {formatDate(from)} a {formatDate(to)}
                     </strong>
                     <span>{issuedAt ? `Emitido em ${formatDateTime(issuedAt)}` : ""}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={3} className="report-letterhead__rule">
+                    <table>
+                      <tbody>
+                        <tr>
+                          <td className="is-forest" />
+                          <td className="is-gold" />
+                          <td className="is-clay" />
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                 </tr>
               </tbody>
@@ -356,32 +385,35 @@ export default function Reports() {
               <caption>Identificação do documento</caption>
               <tbody>
                 <tr>
-                  <th>Documento</th>
-                  <td>Livro-caixa numerado com saldo acumulado</td>
+                  <th>Grupo</th>
+                  <td>G.E. Arno Friedrich · 43/RS</td>
                   <th>Lançamentos</th>
                   <td>{result.ledger.length}</td>
                 </tr>
                 <tr>
-                  <th>Ramos</th>
-                  <td>{filterSummary.branches}</td>
+                  <th>Documento</th>
+                  <td>Livro-caixa numerado com saldo acumulado</td>
                   <th>Direção</th>
                   <td>{filterSummary.types}</td>
                 </tr>
                 <tr>
+                  <th>Ramos</th>
+                  <td>{filterSummary.branches}</td>
                   <th>Natureza</th>
                   <td>{filterSummary.natures}</td>
-                  <th>Síntese agrupada por</th>
-                  <td>{GROUP_BY_LABELS[groupBy]}</td>
                 </tr>
                 <tr>
+                  <th>Síntese agrupada por</th>
+                  <td>{GROUP_BY_LABELS[groupBy]}</td>
                   <th>Tipos de movimentação</th>
-                  <td colSpan={3}>{filterSummary.movementTypes}</td>
+                  <td>{filterSummary.movementTypes}</td>
                 </tr>
                 <tr>
                   <th>Emitido por</th>
                   <td colSpan={3}>
                     {issuerName ?? "Tesouraria"}
                     {issuerUser ? ` (@${issuerUser})` : ""}
+                    {issuedAt ? ` · ${formatDateTime(issuedAt)}` : ""}
                   </td>
                 </tr>
               </tbody>
@@ -435,66 +467,66 @@ export default function Reports() {
               </label>
             </FilterBar>
             <ListingResults fetching={busy} filtering={summaryListing.busy} fetchLabel="Gerando relatório…">
-            <table className="data report-summary">
-              <caption className="print-only">Síntese por {GROUP_BY_LABELS[groupBy].toLowerCase()}</caption>
-              <thead>
-                <tr>
-                  <th>{groupBy === "none" ? "Descrição" : "Grupo"}</th>
-                  <th className="num">Entradas</th>
-                  <th className="num">Saídas</th>
-                  <th className="num">Líquido</th>
-                  <th className="num">Qtd.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaryPrintRows.length === 0 ? (
+              <table className="data report-summary">
+                <caption className="print-only">Síntese por {GROUP_BY_LABELS[groupBy].toLowerCase()}</caption>
+                <thead>
                   <tr>
-                    <td colSpan={5} className="muted">
-                      Nenhum grupo com esses filtros.
+                    <th>{groupBy === "none" ? "Descrição" : "Grupo"}</th>
+                    <th className="num">Entradas</th>
+                    <th className="num">Saídas</th>
+                    <th className="num">Líquido</th>
+                    <th className="num">Qtd.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summaryPrintRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="muted">
+                        Nenhum grupo com esses filtros.
+                      </td>
+                    </tr>
+                  ) : (
+                    summaryPrintRows.map((r) => (
+                      <tr key={r.key}>
+                        <td>{r.label}</td>
+                        <td className="num is-pos">{brl(r.income)}</td>
+                        <td className="num is-neg">{brl(r.expense)}</td>
+                        <td className="num">{brl(r.net)}</td>
+                        <td className="num">{r.count}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="is-total">
+                    <td>
+                      <strong>Total</strong>
+                    </td>
+                    <td className="num">
+                      <strong>{brl(result.totals.income)}</strong>
+                    </td>
+                    <td className="num">
+                      <strong>{brl(result.totals.expense)}</strong>
+                    </td>
+                    <td className="num">
+                      <strong>{brl(result.totals.net)}</strong>
+                    </td>
+                    <td className="num">
+                      <strong>{result.totals.count}</strong>
                     </td>
                   </tr>
-                ) : (
-                  summaryPrintRows.map((r) => (
-                  <tr key={r.key}>
-                    <td>{r.label}</td>
-                    <td className="num is-pos">{brl(r.income)}</td>
-                    <td className="num is-neg">{brl(r.expense)}</td>
-                    <td className="num">{brl(r.net)}</td>
-                    <td className="num">{r.count}</td>
-                  </tr>
-                  ))
-                )}
-              </tbody>
-              <tfoot>
-                <tr className="is-total">
-                  <td>
-                    <strong>Total</strong>
-                  </td>
-                  <td className="num">
-                    <strong>{brl(result.totals.income)}</strong>
-                  </td>
-                  <td className="num">
-                    <strong>{brl(result.totals.expense)}</strong>
-                  </td>
-                  <td className="num">
-                    <strong>{brl(result.totals.net)}</strong>
-                  </td>
-                  <td className="num">
-                    <strong>{result.totals.count}</strong>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-            <Pager
-              total={summaryListing.total}
-              fromRow={summaryListing.fromRow}
-              toRow={summaryListing.toRow}
-              pageSize={summaryListing.pageSize}
-              currentPage={summaryListing.currentPage}
-              pageCount={summaryListing.pageCount}
-              onPageSize={summaryListing.setPageSize}
-              onPage={summaryListing.setPage}
-            />
+                </tfoot>
+              </table>
+              <Pager
+                total={summaryListing.total}
+                fromRow={summaryListing.fromRow}
+                toRow={summaryListing.toRow}
+                pageSize={summaryListing.pageSize}
+                currentPage={summaryListing.currentPage}
+                pageCount={summaryListing.pageCount}
+                onPageSize={summaryListing.setPageSize}
+                onPage={summaryListing.setPage}
+              />
             </ListingResults>
           </article>
 
@@ -511,104 +543,106 @@ export default function Reports() {
               </label>
             </FilterBar>
             <ListingResults fetching={busy} filtering={ledgerListing.busy} fetchLabel="Gerando relatório…">
-            <div className="table-wrap">
-              <table className="data ledger">
-                <caption className="print-only">
-                  Livro-caixa · {formatDate(from)} a {formatDate(to)}
-                </caption>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Data</th>
-                    <th>Histórico</th>
-                    <th>Tipo</th>
-                    <th>Ramo</th>
-                    <th className="num">Entrada</th>
-                    <th className="num">Saída</th>
-                    <th className="num">Saldo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="is-opening">
-                    <td>—</td>
-                    <td>{formatDate(from)}</td>
-                    <td colSpan={3}>
-                      <strong>Saldo inicial do período</strong>
-                    </td>
-                    <td className="num">—</td>
-                    <td className="num">—</td>
-                    <td className="num">
-                      <strong>{brl(result.opening)}</strong>
-                    </td>
-                  </tr>
-                  {ledgerPrintRows.length === 0 ? (
+              <div className="table-wrap">
+                <table className="data ledger">
+                  <caption className="print-only">
+                    Livro-caixa · {formatDate(from)} a {formatDate(to)}
+                  </caption>
+                  <thead>
                     <tr>
-                      <td colSpan={8} className="muted">
-                        Nenhum lançamento com esses filtros.
+                      <th>#</th>
+                      <th>Data</th>
+                      <th>Histórico</th>
+                      <th>Tipo</th>
+                      <th>Ramo</th>
+                      <th className="num">Entrada</th>
+                      <th className="num">Saída</th>
+                      <th className="num">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="is-opening">
+                      <td>—</td>
+                      <td>{formatDate(from)}</td>
+                      <td colSpan={3}>
+                        <strong>Saldo inicial do período</strong>
+                      </td>
+                      <td className="num">—</td>
+                      <td className="num">—</td>
+                      <td className="num">
+                        <strong>{brl(result.opening)}</strong>
                       </td>
                     </tr>
-                  ) : (
-                    ledgerPrintRows.map((line) => (
-                    <tr key={line.id}>
-                      <td>{line.seq}</td>
-                      <td>{formatDate(line.date)}</td>
-                      <td>
-                        <strong>{line.description}</strong>
-                        <div className="muted">
-                          {line.movementType}
-                          {line.memberName ? ` · ${line.memberName}` : ""}
-                          {line.guardianName ? ` · resp. ${line.guardianName}` : ""}
-                          {line.accountHolder ? ` · conta ${line.accountHolder}` : ""}
-                          {" · "}
-                          {natureLabel(line.nature)}
-                        </div>
-                        <RecordStamp
-                          origin={line.origin}
-                          createdAt={line.createdAt}
-                          createdBy={line.createdByName ? { name: line.createdByName } : null}
-                          updatedAt={line.updatedAt}
-                          updatedBy={line.updatedByName ? { name: line.updatedByName } : null}
-                        />
+                    {ledgerPrintRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="muted">
+                          Nenhum lançamento com esses filtros.
+                        </td>
+                      </tr>
+                    ) : (
+                      ledgerPrintRows.map((line) => (
+                        <tr key={line.id}>
+                          <td>{line.seq}</td>
+                          <td>{formatDate(line.date)}</td>
+                          <td>
+                            <strong>{line.description}</strong>
+                            <div className="muted">
+                              {line.movementType}
+                              {line.memberName ? ` · ${line.memberName}` : ""}
+                              {line.guardianName ? ` · resp. ${line.guardianName}` : ""}
+                              {line.accountHolder ? ` · conta ${line.accountHolder}` : ""}
+                              {" · "}
+                              {natureLabel(line.nature)}
+                            </div>
+                            <div className="no-print">
+                              <RecordStamp
+                                origin={line.origin}
+                                createdAt={line.createdAt}
+                                createdBy={line.createdByName ? { name: line.createdByName } : null}
+                                updatedAt={line.updatedAt}
+                                updatedBy={line.updatedByName ? { name: line.updatedByName } : null}
+                              />
+                            </div>
+                          </td>
+                          <td>{typeLabel(line.type)}</td>
+                          <td>{BRANCH_LABELS[line.branch]}</td>
+                          <td className="num is-pos">{line.income ? brl(line.income) : "—"}</td>
+                          <td className="num is-neg">{line.expense ? brl(line.expense) : "—"}</td>
+                          <td className="num">{brl(line.balance)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="is-total">
+                      <td>—</td>
+                      <td>{formatDate(to)}</td>
+                      <td colSpan={3}>
+                        <strong>Saldo final conferido</strong>
                       </td>
-                      <td>{typeLabel(line.type)}</td>
-                      <td>{BRANCH_LABELS[line.branch]}</td>
-                      <td className="num is-pos">{line.income ? brl(line.income) : "—"}</td>
-                      <td className="num is-neg">{line.expense ? brl(line.expense) : "—"}</td>
-                      <td className="num">{brl(line.balance)}</td>
+                      <td className="num">
+                        <strong>{brl(result.totals.income)}</strong>
+                      </td>
+                      <td className="num">
+                        <strong>{brl(result.totals.expense)}</strong>
+                      </td>
+                      <td className="num">
+                        <strong>{brl(result.closing)}</strong>
+                      </td>
                     </tr>
-                    ))
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr className="is-total">
-                    <td>—</td>
-                    <td>{formatDate(to)}</td>
-                    <td colSpan={3}>
-                      <strong>Saldo final conferido</strong>
-                    </td>
-                    <td className="num">
-                      <strong>{brl(result.totals.income)}</strong>
-                    </td>
-                    <td className="num">
-                      <strong>{brl(result.totals.expense)}</strong>
-                    </td>
-                    <td className="num">
-                      <strong>{brl(result.closing)}</strong>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-            <Pager
-              total={ledgerListing.total}
-              fromRow={ledgerListing.fromRow}
-              toRow={ledgerListing.toRow}
-              pageSize={ledgerListing.pageSize}
-              currentPage={ledgerListing.currentPage}
-              pageCount={ledgerListing.pageCount}
-              onPageSize={ledgerListing.setPageSize}
-              onPage={ledgerListing.setPage}
-            />
+                  </tfoot>
+                </table>
+              </div>
+              <Pager
+                total={ledgerListing.total}
+                fromRow={ledgerListing.fromRow}
+                toRow={ledgerListing.toRow}
+                pageSize={ledgerListing.pageSize}
+                currentPage={ledgerListing.currentPage}
+                pageCount={ledgerListing.pageCount}
+                onPageSize={ledgerListing.setPageSize}
+                onPage={ledgerListing.setPage}
+              />
             </ListingResults>
             <p className="muted no-print" style={{ marginTop: 16 }}>
               Documento gerado para conferência da comissão fiscal. Ramos do grupo:{" "}
@@ -662,8 +696,9 @@ export default function Reports() {
                       <img src={logo} alt="" />
                     </td>
                     <td>
-                      Grupo Escoteiro Arno Friedrich · 43/RS · Ramos: {YOUTH_BRANCHES.map((b) => b.unit).join(", ")} e
-                      Grupo. Documento emitido pelo sistema de tesouraria para conferência da comissão fiscal
+                      Grupo Escoteiro Arno Friedrich · Registro 43/RS · UEB · LTC · Ramos:{" "}
+                      {YOUTH_BRANCHES.map((b) => b.unit).join(", ")} e Grupo. Documento emitido pelo sistema de
+                      tesouraria para conferência da comissão fiscal
                       {issuedAt ? ` em ${formatDateTime(issuedAt)}` : ""}.
                     </td>
                   </tr>

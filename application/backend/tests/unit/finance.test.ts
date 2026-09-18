@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { cashBalance, cashFlow, customReport, inRange, projectActuals, sumBy } from "../../src/finance.js";
-import type { DatabaseShape, Transaction } from "../../src/types.js";
+import {
+  cashBalance,
+  cashFlow,
+  customReport,
+  dashboard,
+  inRange,
+  projectActuals,
+  sumBy,
+} from "../../src/reports/finance.js";
+import type { DatabaseShape, Transaction } from "../../src/shared/types.js";
 
 function tx(partial: Partial<Transaction> & Pick<Transaction, "id" | "date" | "type" | "amount">): Transaction {
   return {
@@ -110,6 +118,46 @@ describe("finance helpers", () => {
     const actuals = projectActuals(db, "p1");
     expect(actuals.expense).toBe(50);
     expect(actuals.income).toBe(0);
+    expect(actuals.byItem).toEqual([]);
+  });
+
+  it("matches project item actuals by movement type", () => {
+    const withItems: DatabaseShape = {
+      ...db,
+      projects: [
+        {
+          ...db.projects[0],
+          items: [
+            {
+              id: "i1",
+              category: "Sede",
+              description: "Aluguel",
+              planned: 80,
+              movementTypeId: "mt-sede",
+            },
+          ],
+        },
+      ],
+    };
+    const actuals = projectActuals(withItems, "p1");
+    expect(actuals.byItem[0]).toEqual({ itemId: "i1", income: 0, expense: 50 });
+  });
+
+  it("scopes dashboard totals and chart to the selected month or the whole year", () => {
+    const august = dashboard(db, 2026, 8);
+    expect(august.chart).toHaveLength(1);
+    expect(august.chart[0]?.month).toBe("2026-08");
+    expect(august.income).toBe(200);
+    expect(august.expense).toBe(50);
+    expect(august.chart[0]?.balance).toBe(150);
+    expect(august.current).toBe(1150);
+
+    const year = dashboard(db, 2026, 0);
+    expect(year.chart).toHaveLength(12);
+    expect(year.income).toBe(280);
+    expect(year.expense).toBe(50);
+    expect(year.chart[7]?.balance).toBe(150);
+    expect(year.chart[8]?.balance).toBe(80);
   });
 
   it("filters a custom fiscal report", () => {

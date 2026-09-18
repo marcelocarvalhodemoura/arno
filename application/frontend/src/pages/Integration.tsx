@@ -13,6 +13,7 @@ import {
   type TxType,
 } from "@shared";
 import IdentifyPaymentsGuide from "../components/IdentifyPaymentsGuide";
+import SicrediLive from "../components/SicrediLive";
 import PageHeader from "../components/PageHeader";
 import PageLoader from "../components/PageLoader";
 import FetchOverlay from "../components/FetchOverlay";
@@ -27,7 +28,7 @@ import { isUnidentifiedName, writeIdentifyFlag } from "../lib/movement";
 import { usePeriod } from "../lib/period";
 import { useFetch } from "../lib/useFetch";
 
-type Kind = "members" | "transactions";
+type Kind = "members" | "transactions" | "sicredi";
 
 type ImportResult = {
   created: number;
@@ -120,6 +121,14 @@ const FIELD_LABELS: Record<string, string> = {
   guardianRelationship: "Parentesco",
   guardianPhone: "Telefone do responsável",
   guardianEmail: "E-mail do responsável",
+  guardianName2: "Responsável 2",
+  guardianRelationship2: "Parentesco 2",
+  guardianPhone2: "Telefone do responsável 2",
+  guardianEmail2: "E-mail do responsável 2",
+  guardianName3: "Responsável 3",
+  guardianRelationship3: "Parentesco 3",
+  guardianPhone3: "Telefone do responsável 3",
+  guardianEmail3: "E-mail do responsável 3",
 };
 
 function mappingLegend(mapping: Record<string, string>): string {
@@ -129,8 +138,8 @@ function mappingLegend(mapping: Record<string, string>): string {
     .join(" · ");
 }
 
-const MEMBER_TEMPLATE = `nome;email;telefone;ramo;papel;mensalidade;ingresso;clube_ltc;responsavel;parentesco
-João da Silva;joao.exemplo@arnofriedrich.org.br;(51) 99999-1111;escoteiro;jovem;60,00;01/03/2026;não;Maria da Silva;Mãe
+const MEMBER_TEMPLATE = `nome;email;telefone;ramo;papel;mensalidade;ingresso;clube_ltc;responsavel;parentesco;telefone_responsavel;email_responsavel;responsavel_2;parentesco_2;telefone_responsavel_2;email_responsavel_2
+João da Silva;joao.exemplo@arnofriedrich.org.br;(51) 99999-1111;escoteiro;jovem;60,00;01/03/2026;não;Maria da Silva;Mãe;(51) 98888-2222;maria.exemplo@arnofriedrich.org.br;José da Silva;Pai;(51) 97777-3333;jose.exemplo@arnofriedrich.org.br
 `;
 
 const TX_TEMPLATE = `data;tipo;natureza;tipo_movimentacao;descricao;valor;ramo;meio;situacao;associado;responsavel
@@ -173,12 +182,7 @@ export default function Integration() {
     () =>
       txPreview.filter(
         (row) =>
-          row.included &&
-          !row.error &&
-          row.date &&
-          row.movementTypeId &&
-          row.amount > 0 &&
-          row.description.length >= 2,
+          row.included && !row.error && row.date && row.movementTypeId && row.amount > 0 && row.description.length >= 2,
       ),
     [txPreview],
   );
@@ -279,9 +283,7 @@ export default function Integration() {
     }
     setInterpreting(true);
     try {
-      const payload = isPdfFile(file)
-        ? { pdf: await fileToBase64(file) }
-        : { csv: await fileToCsvText(file) };
+      const payload = isPdfFile(file) ? { pdf: await fileToBase64(file) } : { csv: await fileToCsvText(file) };
       const result = await api<InterpretResponse>("/integrations/interpret-statement", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -362,14 +364,11 @@ export default function Integration() {
         const skipped = result.skipped.length;
         const paid = result.paid ?? 0;
         const unidentified =
-          result.unidentified ??
-          validTxs.filter((row) => isUnidentifiedName(row.movementTypeName)).length;
+          result.unidentified ?? validTxs.filter((row) => isUnidentifiedName(row.movementTypeName)).length;
         const parts = [
           result.created ? qty(result.created, "lançamento importado", "lançamentos importados") : "",
           paid ? qty(paid, "mensalidade marcada como paga", "mensalidades marcadas como pagas") : "",
-          unidentified
-            ? qty(unidentified, "ficou para identificar o tipo", "ficaram para identificar o tipo")
-            : "",
+          unidentified ? qty(unidentified, "ficou para identificar o tipo", "ficaram para identificar o tipo") : "",
         ].filter(Boolean);
         if (parts.length) {
           toast.success(`${parts.join(". ")}${skipped ? `. ${qty(skipped, "já existia", "já existiam")}.` : "."}`);
@@ -408,20 +407,22 @@ export default function Integration() {
       <PageHeader
         kicker="Integração"
         title="Extratos e associados"
-        subtitle="A tesouraria identifica as colunas da planilha ou do PDF do banco, remonta no formato do sistema e sugere tipo, ramo e associado. Você confere a prévia antes de gravar."
+        subtitle="A tesouraria lê o Pix do Sicredi em tempo real, concilia com o caixa e ainda importa planilha ou PDF do extrato quando precisar do movimento completo."
         actions={
-          <button
-            className="btn btn-outline"
-            type="button"
-            onClick={() =>
-              downloadCsv(
-                kind === "members" ? "modelo-associados.csv" : "modelo-extrato.csv",
-                kind === "members" ? MEMBER_TEMPLATE : TX_TEMPLATE,
-              )
-            }
-          >
-            <FaDownload /> Baixar modelo
-          </button>
+          kind === "sicredi" ? null : (
+            <button
+              className="btn btn-outline"
+              type="button"
+              onClick={() =>
+                downloadCsv(
+                  kind === "members" ? "modelo-associados.csv" : "modelo-extrato.csv",
+                  kind === "members" ? MEMBER_TEMPLATE : TX_TEMPLATE,
+                )
+              }
+            >
+              <FaDownload /> Baixar modelo
+            </button>
+          )
         }
       />
 
@@ -440,297 +441,313 @@ export default function Integration() {
         >
           Extrato
         </button>
+        <button
+          className={`tab ${kind === "sicredi" ? "is-on" : ""}`}
+          type="button"
+          onClick={() => switchKind("sicredi")}
+        >
+          Sicredi ao vivo
+        </button>
       </div>
+
+      {kind === "sicredi" ? <SicrediLive /> : null}
 
       {kind === "transactions" ? <IdentifyPaymentsGuide defaultOpen /> : null}
 
-      <FetchOverlay active={interpreting} label="Identificando campos e montando a amostragem…">
-        <article className="card">
-          <p className="muted" style={{ marginBottom: 16 }}>
-            {kind === "members"
-              ? "Colunas: nome, e-mail, telefone, ramo, papel, mensalidade, ingresso, clube LTC e, para jovem, responsável e parentesco."
-              : "Aceita o modelo da tesouraria, extrato em planilha (data, histórico e valor) ou PDF do Sicredi. Mensalidade identificada marca o associado como pago. Linhas amarelas entram no caixa para conferir o tipo depois."}
-          </p>
-
-          <label
-            className={`dropzone${over ? " is-over" : ""}`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setOver(true);
-            }}
-            onDragLeave={() => setOver(false)}
-            onDrop={onDrop}
-          >
-            <FaFileImport />
-            <strong>{fileName || "Arraste o arquivo ou clique para selecionar"}</strong>
-            <span>
+      {kind !== "sicredi" ? (
+        <FetchOverlay active={interpreting} label="Identificando campos e montando a amostragem…">
+          <article className="card">
+            <p className="muted" style={{ marginBottom: 16 }}>
               {kind === "members"
-                ? "Arquivos .csv, .txt, .xls ou .xlsx, até 500 linhas"
-                : "Arquivos .csv, .txt, .xls, .xlsx ou .pdf do extrato, até 500 linhas"}
-            </span>
-            <input
-              ref={fileRef}
-              className="sr-only"
-              type="file"
-              accept={
-                kind === "members"
-                  ? ".csv,.txt,.xls,.xlsx,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  : ".csv,.txt,.xls,.xlsx,.pdf,text/csv,text/plain,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              }
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void readFile(file);
+                ? "Colunas: nome, e-mail, telefone, ramo, papel, mensalidade, ingresso e clube LTC. Jovem leva responsável e parentesco; o segundo responsável entra em responsavel_2 e parentesco_2. Telefone e e-mail de cada responsável são opcionais."
+                : "Aceita o modelo da tesouraria, extrato em planilha (data, histórico e valor) ou PDF do Sicredi. Mensalidade identificada marca o associado como pago. Linhas amarelas entram no caixa para conferir o tipo depois."}
+            </p>
+
+            <label
+              className={`dropzone${over ? " is-over" : ""}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setOver(true);
               }}
-            />
-          </label>
+              onDragLeave={() => setOver(false)}
+              onDrop={onDrop}
+            >
+              <FaFileImport />
+              <strong>{fileName || "Arraste o arquivo ou clique para selecionar"}</strong>
+              <span>
+                {kind === "members"
+                  ? "Arquivos .csv, .txt, .xls ou .xlsx, até 500 linhas"
+                  : "Arquivos .csv, .txt, .xls, .xlsx ou .pdf do extrato, até 500 linhas"}
+              </span>
+              <input
+                ref={fileRef}
+                className="sr-only"
+                type="file"
+                accept={
+                  kind === "members"
+                    ? ".csv,.txt,.xls,.xlsx,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    : ".csv,.txt,.xls,.xlsx,.pdf,text/csv,text/plain,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                }
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void readFile(file);
+                }}
+              />
+            </label>
 
-          {error ? <p className="error">{error}</p> : null}
+            {error ? <p className="error">{error}</p> : null}
 
-          {kind === "transactions" && txPreview.length ? (
-            <>
-              <p style={{ margin: "18px 0 10px" }}>
-                {layout === "bank" ? "Extrato do banco" : "Modelo da tesouraria"}
-                {aiMapped ? " · colunas identificadas pelo modelo" : " · colunas identificadas"}
-                {aiUsed ? " · classificado com modelo" : " · classificado por regras"}
-                {!aiUsed && aiAvailable ? " · modelo disponível para linhas duvidosas" : ""}
-                {` · ${qty(txPreview.length, "linha lida", "linhas lidas")}`}
-                {validCount ? ` · ${qty(validCount, "pronta", "prontas")} para importar` : ""}
-                {reviewCount ? ` · ${qty(reviewCount, "para conferir", "para conferir")}` : ""}
-                {errorCount ? ` · ${qty(errorCount, "com erro", "com erros")}` : ""}
-              </p>
-              {mappingLegend(mapping) ? (
-                <p className="muted" style={{ margin: "-4px 0 12px" }}>
-                  {mappingLegend(mapping)}
+            {kind === "transactions" && txPreview.length ? (
+              <>
+                <p style={{ margin: "18px 0 10px" }}>
+                  {layout === "bank" ? "Extrato do banco" : "Modelo da tesouraria"}
+                  {aiMapped ? " · colunas identificadas pelo modelo" : " · colunas identificadas"}
+                  {aiUsed ? " · classificado com modelo" : " · classificado por regras"}
+                  {!aiUsed && aiAvailable ? " · modelo disponível para linhas duvidosas" : ""}
+                  {` · ${qty(txPreview.length, "linha lida", "linhas lidas")}`}
+                  {validCount ? ` · ${qty(validCount, "pronta", "prontas")} para importar` : ""}
+                  {reviewCount ? ` · ${qty(reviewCount, "para conferir", "para conferir")}` : ""}
+                  {errorCount ? ` · ${qty(errorCount, "com erro", "com erros")}` : ""}
                 </p>
-              ) : null}
-              <SamplePanel sample={sample} review={review} />
-              <div className="table-wrap">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th>Incluir</th>
-                      <th>Data</th>
-                      <th>Descrição</th>
-                      <th>Valor</th>
-                      <th>Tipo</th>
-                      <th>Associado</th>
-                      <th>Responsável</th>
-                      <th>Ramo</th>
-                      <th>Sugestão</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {txPreview.map((row) => (
-                      <tr
-                        key={row.line}
-                        className={row.error ? "" : row.confidence === "high" ? "is-paid" : "is-pending"}
-                      >
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={row.included}
-                            aria-label={`Incluir linha ${row.line}`}
-                            disabled={Boolean(row.error)}
-                            onChange={(event) =>
-                              setTxPreview((current) =>
-                                current.map((item) =>
-                                  item.line === row.line ? { ...item, included: event.target.checked } : item,
-                                ),
-                              )
-                            }
-                          />
-                        </td>
-                        <td>{row.date ? formatDate(row.date) : "—"}</td>
-                        <td>
-                          <input
-                            className="preview-input"
-                            value={row.description}
-                            aria-label={`Descrição linha ${row.line}`}
-                            onChange={(event) => patchTx(row.line, { description: event.target.value })}
-                          />
-                        </td>
-                        <td>{row.amount ? brl(row.amount) : "—"}</td>
-                        <td>
-                          <select
-                            value={row.movementTypeId}
-                            aria-label={`Tipo linha ${row.line}`}
-                            onChange={(event) => {
-                              const movement = types.data?.find((item) => item.id === event.target.value);
-                              patchTx(row.line, {
-                                movementTypeId: event.target.value,
-                                movementTypeName: movement?.name ?? "",
-                                type:
-                                  movement?.direction === "expense" || movement?.direction === "income"
-                                    ? movement.direction
-                                    : row.type,
-                              });
-                            }}
-                          >
-                            <option value="">Selecione</option>
-                            {(types.data ?? [])
-                              .filter(
-                                (item) =>
-                                  item.id === row.movementTypeId ||
-                                  (item.active && (item.direction === "both" || item.direction === row.type)),
-                              )
-                              .map((item) => (
-                                <option key={item.id} value={item.id}>
-                                  {item.name}
+                {mappingLegend(mapping) ? (
+                  <p className="muted" style={{ margin: "-4px 0 12px" }}>
+                    {mappingLegend(mapping)}
+                  </p>
+                ) : null}
+                <SamplePanel sample={sample} review={review} />
+                <div className="table-wrap">
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        <th>Incluir</th>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Tipo</th>
+                        <th>Associado</th>
+                        <th>Responsável</th>
+                        <th>Ramo</th>
+                        <th>Sugestão</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {txPreview.map((row) => (
+                        <tr
+                          key={row.line}
+                          className={row.error ? "" : row.confidence === "high" ? "is-paid" : "is-pending"}
+                        >
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={row.included}
+                              aria-label={`Incluir linha ${row.line}`}
+                              disabled={Boolean(row.error)}
+                              onChange={(event) =>
+                                setTxPreview((current) =>
+                                  current.map((item) =>
+                                    item.line === row.line ? { ...item, included: event.target.checked } : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </td>
+                          <td>{row.date ? formatDate(row.date) : "—"}</td>
+                          <td>
+                            <input
+                              className="preview-input"
+                              value={row.description}
+                              aria-label={`Descrição linha ${row.line}`}
+                              onChange={(event) => patchTx(row.line, { description: event.target.value })}
+                            />
+                          </td>
+                          <td>{row.amount ? brl(row.amount) : "—"}</td>
+                          <td>
+                            <select
+                              value={row.movementTypeId}
+                              aria-label={`Tipo linha ${row.line}`}
+                              onChange={(event) => {
+                                const movement = types.data?.find((item) => item.id === event.target.value);
+                                patchTx(row.line, {
+                                  movementTypeId: event.target.value,
+                                  movementTypeName: movement?.name ?? "",
+                                  type:
+                                    movement?.direction === "expense" || movement?.direction === "income"
+                                      ? movement.direction
+                                      : row.type,
+                                });
+                              }}
+                            >
+                              <option value="">Selecione</option>
+                              {(types.data ?? [])
+                                .filter(
+                                  (item) =>
+                                    item.id === row.movementTypeId ||
+                                    (item.active && (item.direction === "both" || item.direction === row.type)),
+                                )
+                                .map((item) => (
+                                  <option key={item.id} value={item.id}>
+                                    {item.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              value={row.memberId ?? ""}
+                              aria-label={`Associado linha ${row.line}`}
+                              onChange={(event) => patchTx(row.line, { memberId: event.target.value || undefined })}
+                            >
+                              <option value="">Sem associado</option>
+                              {(members.data ?? []).map((member) => (
+                                <option key={member.id} value={member.id}>
+                                  {member.name}
                                 </option>
                               ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            value={row.memberId ?? ""}
-                            aria-label={`Associado linha ${row.line}`}
-                            onChange={(event) => patchTx(row.line, { memberId: event.target.value || undefined })}
-                          >
-                            <option value="">Sem associado</option>
-                            {(members.data ?? []).map((member) => (
-                              <option key={member.id} value={member.id}>
-                                {member.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            value={row.memberGuardianId ?? ""}
-                            aria-label={`Responsável linha ${row.line}`}
-                            disabled={!row.memberId}
-                            onChange={(event) =>
-                              patchTx(row.line, { memberGuardianId: event.target.value || undefined })
-                            }
-                          >
-                            <option value="">Não informar</option>
-                            {(members.data ?? [])
-                              .find((item) => item.id === row.memberId)
-                              ?.guardians?.map((guardian) => (
-                              <option key={guardian.id} value={guardian.id}>
-                                {guardian.name}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            value={row.branch}
-                            aria-label={`Ramo linha ${row.line}`}
-                            onChange={(event) => patchTx(row.line, { branch: event.target.value as BranchId })}
-                          >
-                            {ALL_BRANCHES.map((id) => (
-                              <option key={id} value={id}>
-                                {BRANCH_LABELS[id]}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          {row.error ? (
-                            <span className="preview-err">{row.error}</span>
-                          ) : (
-                            <span className={row.confidence === "high" ? "preview-ok" : "preview-warn"}>
-                              {row.confidence === "high" ? "Ok" : "Conferir"} · {row.hint}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="muted" style={{ marginTop: 10 }}>
-                Meio e natureza entram com a sugestão (Pix/fixa ou variável). Ajuste o tipo se a regra errar.
-              </p>
-            </>
-          ) : null}
-
-          {kind === "members" && memberPreview.length ? (
-            <>
-              <p style={{ margin: "18px 0 10px" }}>
-                {aiMapped ? "Colunas identificadas pelo modelo" : "Colunas identificadas"}
-                {` · ${qty(memberPreview.length, "linha lida", "linhas lidas")}`}
-                {validCount ? ` · ${qty(validCount, "pronta", "prontas")} para importar` : ""}
-                {errorCount ? ` · ${qty(errorCount, "com erro", "com erros")}` : ""}
-              </p>
-              {mappingLegend(mapping) ? (
-                <p className="muted" style={{ margin: "-4px 0 12px" }}>
-                  {mappingLegend(mapping)}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              value={row.memberGuardianId ?? ""}
+                              aria-label={`Responsável linha ${row.line}`}
+                              disabled={!row.memberId}
+                              onChange={(event) =>
+                                patchTx(row.line, { memberGuardianId: event.target.value || undefined })
+                              }
+                            >
+                              <option value="">Não informar</option>
+                              {(members.data ?? [])
+                                .find((item) => item.id === row.memberId)
+                                ?.guardians?.map((guardian) => (
+                                  <option key={guardian.id} value={guardian.id}>
+                                    {guardian.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              value={row.branch}
+                              aria-label={`Ramo linha ${row.line}`}
+                              onChange={(event) => patchTx(row.line, { branch: event.target.value as BranchId })}
+                            >
+                              {ALL_BRANCHES.map((id) => (
+                                <option key={id} value={id}>
+                                  {BRANCH_LABELS[id]}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            {row.error ? (
+                              <span className="preview-err">{row.error}</span>
+                            ) : (
+                              <span className={row.confidence === "high" ? "preview-ok" : "preview-warn"}>
+                                {row.confidence === "high" ? "Ok" : "Conferir"} · {row.hint}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="muted" style={{ marginTop: 10 }}>
+                  Meio e natureza entram com a sugestão (Pix/fixa ou variável). Ajuste o tipo se a regra errar.
                 </p>
-              ) : null}
-              <SamplePanel sample={sample} review={review} />
-              <div className="table-wrap">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th>Linha</th>
-                      <th>Nome</th>
-                      <th>E-mail</th>
-                      <th>Ramo</th>
-                      <th>Responsável</th>
-                      <th>Mensalidade</th>
-                      <th>Situação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {memberPreview.map((row) => (
-                      <tr key={row.line}>
-                        <td>{row.line}</td>
-                        {row.mapped.ok ? (
-                          <>
-                            <td>{row.mapped.value.name}</td>
-                            <td>{row.mapped.value.email}</td>
-                            <td>{BRANCH_LABELS[row.mapped.value.branch]}</td>
-                            <td>
-                              {row.mapped.value.guardians?.length
-                                ? row.mapped.value.guardians.map((item) => item.name).join(", ")
-                                : row.mapped.value.role === "jovem"
-                                  ? "Sem responsável"
-                                  : "—"}
-                            </td>
-                            <td>{brl(row.mapped.value.monthlyFee)}</td>
-                            <td>
-                              <span className="preview-ok">Ok · {roleLabel(row.mapped.value.role)}</span>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td colSpan={5}>—</td>
-                            <td>
-                              <span className="preview-err">{row.mapped.error}</span>
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : null}
+              </>
+            ) : null}
 
-          {preview.length ? (
-            <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
-              <button className="btn btn-ghost" type="button" onClick={resetPreview} disabled={saving || interpreting}>
-                Limpar
-              </button>
-              <SubmitButton
-                type="button"
-                busy={saving}
-                busyLabel="Importando…"
-                disabled={!validCount}
-                onClick={() => void importRows()}
-              >
-                Importar{" "}
-                {kind === "members"
-                  ? qty(validCount, "associado", "associados")
-                  : qty(validCount, "lançamento", "lançamentos")}
-              </SubmitButton>
-            </div>
-          ) : null}
-        </article>
-      </FetchOverlay>
+            {kind === "members" && memberPreview.length ? (
+              <>
+                <p style={{ margin: "18px 0 10px" }}>
+                  {aiMapped ? "Colunas identificadas pelo modelo" : "Colunas identificadas"}
+                  {` · ${qty(memberPreview.length, "linha lida", "linhas lidas")}`}
+                  {validCount ? ` · ${qty(validCount, "pronta", "prontas")} para importar` : ""}
+                  {errorCount ? ` · ${qty(errorCount, "com erro", "com erros")}` : ""}
+                </p>
+                {mappingLegend(mapping) ? (
+                  <p className="muted" style={{ margin: "-4px 0 12px" }}>
+                    {mappingLegend(mapping)}
+                  </p>
+                ) : null}
+                <SamplePanel sample={sample} review={review} />
+                <div className="table-wrap">
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        <th>Linha</th>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Ramo</th>
+                        <th>Responsável</th>
+                        <th>Mensalidade</th>
+                        <th>Situação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {memberPreview.map((row) => (
+                        <tr key={row.line}>
+                          <td>{row.line}</td>
+                          {row.mapped.ok ? (
+                            <>
+                              <td>{row.mapped.value.name}</td>
+                              <td>{row.mapped.value.email}</td>
+                              <td>{BRANCH_LABELS[row.mapped.value.branch]}</td>
+                              <td>
+                                {row.mapped.value.guardians?.length
+                                  ? row.mapped.value.guardians.map((item) => item.name).join(", ")
+                                  : row.mapped.value.role === "jovem"
+                                    ? "Sem responsável"
+                                    : "—"}
+                              </td>
+                              <td>{brl(row.mapped.value.monthlyFee)}</td>
+                              <td>
+                                <span className="preview-ok">Ok · {roleLabel(row.mapped.value.role)}</span>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td colSpan={5}>—</td>
+                              <td>
+                                <span className="preview-err">{row.mapped.error}</span>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : null}
+
+            {preview.length ? (
+              <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={resetPreview}
+                  disabled={saving || interpreting}
+                >
+                  Limpar
+                </button>
+                <SubmitButton
+                  type="button"
+                  busy={saving}
+                  busyLabel="Importando…"
+                  disabled={!validCount}
+                  onClick={() => void importRows()}
+                >
+                  Importar{" "}
+                  {kind === "members"
+                    ? qty(validCount, "associado", "associados")
+                    : qty(validCount, "lançamento", "lançamentos")}
+                </SubmitButton>
+              </div>
+            ) : null}
+          </article>
+        </FetchOverlay>
+      ) : null}
     </div>
   );
 }

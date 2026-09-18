@@ -13,7 +13,7 @@
   position: absolute;
   inset: -12%;
   background-size: cover;
-  background-position: center 40%;
+  background-position: center 68%;
   will-change: transform;
 }
 
@@ -23,7 +23,7 @@
   background:
     radial-gradient(ellipse at 18% 18%, rgba(200, 16, 46, 0.28), transparent 42%),
     radial-gradient(ellipse at 80% 10%, rgba(232, 180, 35, 0.16), transparent 38%),
-    linear-gradient(180deg, rgba(7, 26, 66, 0.28) 0%, rgba(7, 26, 66, 0.58) 45%, rgba(7, 26, 66, 0.94) 100%);
+    linear-gradient(180deg, rgba(7, 26, 66, 0.5) 0%, rgba(7, 26, 66, 0.62) 42%, rgba(7, 26, 66, 0.94) 100%);
 }
 
 .hero__glow {
@@ -279,7 +279,9 @@
   border-radius: var(--radius);
   background: var(--white);
   border: 1px solid var(--line);
-  transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease);
+  transition:
+    transform 0.45s var(--ease),
+    box-shadow 0.45s var(--ease);
   position: relative;
   overflow: hidden;
 }
@@ -382,11 +384,7 @@
 .join-band__veil {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(7, 26, 66, 0.9) 10%,
-    rgba(200, 16, 46, 0.42) 100%
-  );
+  background: linear-gradient(90deg, rgba(7, 26, 66, 0.9) 10%, rgba(200, 16, 46, 0.42) 100%);
 }
 
 .join-band__content {

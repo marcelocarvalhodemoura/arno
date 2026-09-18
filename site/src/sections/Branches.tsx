@@ -33,7 +33,9 @@ export default function Branches() {
             <Reveal>
               <span className="kicker">{ramo.ages}</span>
               <h2>{ramo.branch}</h2>
-              <p className="branch__unit">{ramo.name} · {ramo.members}</p>
+              <p className="branch__unit">
+                {ramo.name} · {ramo.members}
+              </p>
               <p className="lead">{ramo.details}</p>
               <p className="branch__marco">{ramo.marco}</p>
               <p className="branch__promise">Lema: “{ramo.lema}”</p>
@@ -45,7 +47,7 @@ export default function Branches() {
               <div
                 className="branch__photo"
                 style={{
-                  backgroundImage: `url(${i % 2 ? images.hike : images.lake})`,
+                  backgroundImage: `url(${i % 2 ? images.summit : images.lake})`,
                 }}
               />
               <div className="branch__chip" style={{ background: ramo.color }}>

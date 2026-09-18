@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { interpretStatement } from "../../src/statement.js";
-import { extractPdfText, pdfToStatementCsv, statementTextToCsv } from "../../src/statement-pdf.js";
+import { interpretStatement } from "../../src/statement/statement.js";
+import { extractPdfText, pdfToStatementCsv, statementTextToCsv } from "../../src/statement/statement-pdf.js";
 
 const SICREDI_TEXT = `Associado: GRUPO ESCOTEIRO EXEMPLO
 Cooperativa: 0000

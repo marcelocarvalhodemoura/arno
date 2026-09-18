@@ -8,8 +8,8 @@ export const PASSWORD = process.env.ADMIN_PASSWORD ?? "senha-de-teste";
 
 export async function login(page: Page, user: string, password: string) {
   await page.goto("/login");
-  await page.getByLabel("Usuário").fill(user);
-  await page.getByLabel("Senha").fill(password);
+  await page.getByLabel("Usuário ou e-mail").fill(user);
+  await page.locator('input[autocomplete="current-password"]').fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
 }
 
@@ -19,6 +19,17 @@ export async function expectPager(page: Page) {
   await expect(page.getByText(/Página \d+ de \d+/).first()).toBeVisible();
   await page.getByLabel("Por página").first().selectOption("15");
   await expect(page.getByLabel("Por página").first()).toHaveValue("15");
+}
+
+export function successToast(page: Page, text?: string | RegExp) {
+  const loc = page.locator(".toast--success");
+  return text ? loc.filter({ hasText: text }) : loc.last();
+}
+
+export async function selectOptionByText(locator: ReturnType<Page["getByLabel"]>, text: string | RegExp) {
+  const value = await locator.locator("option").filter({ hasText: text }).first().getAttribute("value");
+  if (!value) throw new Error("Opção não encontrada");
+  await locator.selectOption(value);
 }
 
 async function authHeaders(api: APIRequestContext) {

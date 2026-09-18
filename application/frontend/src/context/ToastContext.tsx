@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import { duration, ease } from "../lib/motion";
 
 type ToastKind = "success" | "error";
 
@@ -54,7 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, y: 12, x: 16 }}
               animate={{ opacity: 1, y: 0, x: 0 }}
               exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.22 }}
+              transition={{ duration: duration.base, ease }}
             >
               {toast.kind === "success" ? <FaCheckCircle /> : <FaExclamationCircle />}
               <span>{toast.message}</span>

@@ -1,11 +1,12 @@
-import type {
-  BranchId,
-  MemberRole,
-  PaymentMethod,
-  TxNature,
-  TxPaymentStatus,
-  TxType,
-  YouthBranchId,
+import {
+  onTimeMonthlyFee,
+  type BranchId,
+  type MemberRole,
+  type PaymentMethod,
+  type TxNature,
+  type TxPaymentStatus,
+  type TxType,
+  type YouthBranchId,
 } from "@shared";
 import { parseMoney } from "./masks";
 
@@ -30,6 +31,8 @@ export type MemberImportRow = {
   guardians?: { name: string; relationship: string; phone: string; email: string }[];
 };
 
+type GuardianImport = NonNullable<MemberImportRow["guardians"]>[number];
+
 export type TxImportRow = {
   date: string;
   type: TxType;
@@ -48,15 +51,15 @@ export type TxImportRow = {
 };
 
 export function fold(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .trim();
+  return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
 }
 
 export function parseCsv(text: string): CsvTable {
-  const raw = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  const raw = text
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
   if (!raw) return { headers: [], rows: [] };
   const lines = splitCsvLines(raw);
   if (lines.length === 0) return { headers: [], rows: [] };
@@ -181,27 +184,45 @@ export function parsePaymentStatus(value: string): TxPaymentStatus | null {
   return null;
 }
 
+function pickGuardian(row: Record<string, string>, slot: number): GuardianImport | null {
+  const suffix = slot === 1 ? "" : `_${slot}`;
+  const name = pick(
+    row,
+    `responsavel${suffix}`,
+    `nome_responsavel${suffix}`,
+    slot === 1 ? "guardian" : `guardian_${slot}`,
+  );
+  if (name.length < 2) return null;
+  return {
+    name,
+    relationship:
+      pick(row, `parentesco${suffix}`, `grau_parentesco${suffix}`, slot === 1 ? "relacao" : `relacao_${slot}`) ||
+      "Outro",
+    phone: pick(row, `telefone_responsavel${suffix}`, `fone_responsavel${suffix}`),
+    email: pick(row, `email_responsavel${suffix}`),
+  };
+}
+
+function collectGuardians(row: Record<string, string>): GuardianImport[] | undefined {
+  const list = [1, 2, 3].map((slot) => pickGuardian(row, slot)).filter((item): item is GuardianImport => Boolean(item));
+  return list.length ? list : undefined;
+}
+
 export function mapMemberRow(row: Record<string, string>): MapResult<MemberImportRow> {
   const name = pick(row, "nome", "name", "associado");
   const email = pick(row, "email", "e-mail");
   const phone = pick(row, "telefone", "phone", "celular");
   const branch = parseBranch(pick(row, "ramo", "branch"), false) as YouthBranchId | null;
   const role = parseRole(pick(row, "papel", "funcao", "role"));
-  const monthlyFee = parseAmountCell(pick(row, "mensalidade", "monthly_fee", "taxa"));
   const joinedAt = parseIsoDate(pick(row, "ingresso", "joined_at", "data"));
   const ltcRaw = pick(row, "clube_ltc", "ltc", "clube");
   const clubeLtc = ltcRaw ? parseYesNo(ltcRaw) : false;
-  const guardianName = pick(row, "responsavel", "nome_responsavel", "guardian");
-  const guardianRelationship = pick(row, "parentesco", "grau_parentesco", "relacao") || "Outro";
-  const guardianPhone = pick(row, "telefone_responsavel", "fone_responsavel");
-  const guardianEmail = pick(row, "email_responsavel");
 
   if (name.length < 2) return { ok: false, error: "Informe o nome" };
   if (!email.includes("@")) return { ok: false, error: "E-mail inválido" };
   if (phone.replace(/\D/g, "").length < 8) return { ok: false, error: "Telefone inválido" };
   if (!branch) return { ok: false, error: "Ramo inválido" };
   if (!role) return { ok: false, error: "Papel inválido" };
-  if (!Number.isFinite(monthlyFee) || monthlyFee < 0) return { ok: false, error: "Mensalidade inválida" };
   if (!joinedAt) return { ok: false, error: "Data de ingresso inválida" };
   if (clubeLtc === null) return { ok: false, error: "Clube LTC deve ser sim ou não" };
 
@@ -213,20 +234,10 @@ export function mapMemberRow(row: Record<string, string>): MapResult<MemberImpor
       phone,
       branch,
       role,
-      monthlyFee,
+      monthlyFee: onTimeMonthlyFee({ branch, clubeLtc }),
       joinedAt,
       clubeLtc,
-      guardians:
-        guardianName.length >= 2
-          ? [
-              {
-                name: guardianName,
-                relationship: guardianRelationship,
-                phone: guardianPhone,
-                email: guardianEmail,
-              },
-            ]
-          : undefined,
+      guardians: collectGuardians(row),
     },
   };
 }
@@ -257,9 +268,7 @@ export function mapTxRow(
   if (!branch) return { ok: false, error: "Ramo inválido" };
   if (!paymentStatus) return { ok: false, error: "Situação inválida" };
 
-  const movement = ctx.movementTypes.find(
-    (item) => fold(item.name) === fold(movementName) && item.active !== false,
-  );
+  const movement = ctx.movementTypes.find((item) => fold(item.name) === fold(movementName) && item.active !== false);
   if (!movement) return { ok: false, error: "Tipo de movimentação não encontrado" };
   if (movement.direction && movement.direction !== "both" && movement.direction !== type) {
     return {
@@ -295,7 +304,9 @@ export function mapTxRow(
 }
 
 function normalizeHeader(value: string): string {
-  return fold(value).replace(/[^\p{L}\p{N}]+/gu, "_").replace(/^_|_$/g, "");
+  return fold(value)
+    .replace(/[^\p{L}\p{N}]+/gu, "_")
+    .replace(/^_|_$/g, "");
 }
 
 function detectDelimiter(headerLine: string): "," | ";" {

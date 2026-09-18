@@ -2,10 +2,10 @@
 
 Repositório com as duas frentes do projeto do grupo (43/RS).
 
-| Pasta          | O que é                                                   | Tecnologia                                  |
-| -------------- | --------------------------------------------------------- | ------------------------------------------- |
-| `site/`        | Site institucional público                                | React + TypeScript + Vite (estático)        |
-| `application/` | Sistema de tesouraria (área administrativa, com login)    | React + Node.js/Express + PostgreSQL        |
+| Pasta          | O que é                                                | Tecnologia                           |
+| -------------- | ------------------------------------------------------ | ------------------------------------ |
+| `site/`        | Site institucional público                             | React + TypeScript + Vite (estático) |
+| `application/` | Sistema de tesouraria (área administrativa, com login) | React + Node.js/Express + PostgreSQL |
 
 ## Site institucional
 
@@ -16,9 +16,32 @@ npm run dev     # desenvolvimento
 npm run build   # gera site/dist para publicação
 ```
 
-O build em `site/dist` é composto só de arquivos estáticos, então roda em qualquer
-hospedagem compartilhada. O `.htaccess` incluído no build cuida do roteamento do
-React Router no Apache: qualquer URL cai no `index.html`.
+O build em `site/dist` é composto só de arquivos estáticos. No Nginx, `try_files`
+manda qualquer rota do React para o `index.html`.
+
+## Publicar (Nginx)
+
+A pasta `site/` pode ir para a raiz do domínio porque o build é HTML/CSS/JS.
+A pasta `application/` **não** se publica do mesmo jeito: é um processo Node
+(API + interface). O Nginx só faz proxy para `127.0.0.1:4000`.
+
+Por isso o caminho `/finance` no mesmo domínio não substitui a pasta
+`application/`. O modelo que encaixa no Nginx é **subdomínio**:
+
+| URL                                  | Conteúdo                                   |
+| ------------------------------------ | ------------------------------------------ |
+| `https://seudominio.org/`            | site institucional (`site/dist` no `root`) |
+| `https://tesouraria.seudominio.org/` | login da tesouraria (proxy para o Node)    |
+
+```bash
+cd site && npm ci && npm run build                 # copiar dist → root do site
+cd application && npm ci && npm run build && npm run db:up
+# subir a API (systemd, pm2): cwd application → node backend/dist/index.js
+```
+
+Configuração: [`deploy/nginx-arno.conf`](deploy/nginx-arno.conf).
+DNS: `tesouraria.seudominio.org` no mesmo IP. Em `.env`:
+`PUBLIC_URL=https://tesouraria.seudominio.org`.
 
 ## Sistema de tesouraria
 
@@ -41,6 +64,8 @@ Nenhuma senha, chave ou dado real fica neste repositório:
   O `.env` de verdade não é versionado.
 - No primeiro start, sem `ADMIN_PASSWORD` definida, a API gera uma senha aleatória
   para os usuários iniciais e a imprime uma vez no console.
+- As senhas dos usuários vão para o banco só como hash bcrypt (custo 12), tanto no
+  seed quanto no cadastro pela tela de usuários.
 - O extrato usado nos testes é fictício e pode ser regerado com
   `node backend/tests/fixtures/make-sample-statement.mjs`.
 

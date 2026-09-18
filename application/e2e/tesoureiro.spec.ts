@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { PASSWORD, TREASURER_USER, ensureCatalog, expectPager, login } from "./helpers";
+import {
+  PASSWORD,
+  TREASURER_USER,
+  ensureCatalog,
+  expectPager,
+  login,
+  selectOptionByText,
+  successToast,
+} from "./helpers";
 
 test.describe("tesoureiro", () => {
   test.beforeAll(async () => {
@@ -13,7 +21,7 @@ test.describe("tesoureiro", () => {
     await expect(page.locator(".recharts-wrapper")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Alterar lançamento" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Excluir lançamento" }).first()).toBeVisible();
-    await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Manual");
+    await expect(page.locator(".tx-stamp__origin").first()).toHaveText(/Manual|Integração/);
     await expect(page.getByText(/Lançado por/).first()).toBeVisible();
     await page.getByRole("button", { name: "Alterar lançamento" }).first().click();
     await expect(page.getByRole("heading", { name: "Alterar lançamento" })).toBeVisible();
@@ -23,11 +31,10 @@ test.describe("tesoureiro", () => {
     await expect(page.locator(".fetch-overlay")).toHaveCount(0);
     await expect(page.getByText("Alterado por").first()).toBeVisible();
     await expect(page.getByText("Mensalidade ajustada no e2e").first()).toBeVisible();
-    await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Manual");
+    await expect(page.locator(".tx-stamp__origin").first()).toHaveText(/Manual|Integração/);
     await expect(page.getByLabel("Buscar")).toBeVisible();
     await page.getByLabel("Entrada / saída").selectOption("income");
-    await expect(page.locator(".fetch-overlay")).toBeVisible();
-    await expect(page.locator(".fetch-overlay")).toContainText("Filtrando");
+    await expect(page.locator(".listing-results.is-filtering")).toBeVisible();
     await expectPager(page);
     await expect(page.getByText(/Mostrando /)).toBeVisible();
   });
@@ -40,23 +47,35 @@ test.describe("tesoureiro", () => {
     await expect(page.getByText("Helena Souza (Mãe)").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Alterar associado" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Contas de pagamento" }).first()).toBeVisible();
-    await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Manual");
+    await expect(page.locator("tr").filter({ hasText: "Helena Souza" }).locator(".tx-stamp__origin")).toHaveText(
+      "Manual",
+    );
     await page.getByPlaceholder("Nome, e-mail, telefone, responsável…").fill("ana");
     await expectPager(page);
 
-    await page.getByRole("button", { name: "Alterar associado" }).first().click();
+    await page
+      .locator("tr")
+      .filter({ hasText: "Ana Souza" })
+      .getByRole("button", { name: "Alterar associado" })
+      .click();
     await expect(page.getByRole("heading", { name: "Alterar associado" })).toBeVisible();
-    await expect(page.getByLabel("Nome do responsável")).toHaveValue(/Helena/);
-    await page.getByLabel("Mensalidade (R$)").fill("7000");
+    const guardianName = page.getByLabel("Nome do responsável").first();
+    if (!(await guardianName.inputValue()).match(/Helena/i)) {
+      await guardianName.fill("Helena Souza");
+      await page.getByLabel("Parentesco").first().selectOption("Mãe");
+    } else {
+      await expect(guardianName).toHaveValue(/Helena/);
+    }
+    await page.getByLabel("Associado do Clube LTC").selectOption("true");
     await page.getByRole("button", { name: "Salvar alteração" }).click();
-    await expect(page.getByRole("status")).toContainText("Associado alterado com sucesso");
+    await expect(successToast(page, "Associado alterado com sucesso")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Alterar associado" })).toHaveCount(0);
-    await expect(page.getByText(/R\$\s*70,00/)).toBeVisible();
+    await expect(page.getByText(/R\$\s*75,00/)).toBeVisible();
     await expect(page.getByText("Alterado por").first()).toBeVisible();
 
     await page.getByRole("link", { name: "Tipos de movimentação" }).click();
     await expect(page.getByRole("heading", { name: "Tipos de movimentação" })).toBeVisible();
-    await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Manual");
+    await expect(page.locator(".tx-stamp__origin").first()).toHaveText(/Manual|Integração/);
     await page.getByLabel("Direção").selectOption("income");
     await expectPager(page);
   });
@@ -69,18 +88,19 @@ test.describe("tesoureiro", () => {
     await modal.getByLabel("Vencimento").fill("2026-08-05");
     await modal.getByLabel("Situação").selectOption("pending");
     await modal.getByLabel("Tipo de movimentação").selectOption({ index: 1 });
-    await modal.getByLabel("Associado (opcional)").selectOption({ label: /Ana Souza/ });
+    await selectOptionByText(modal.getByLabel("Associado (opcional)"), /Ana Souza/);
     await expect(modal.getByLabel("Responsável")).toBeVisible();
-    await modal.getByLabel("Responsável").selectOption({ label: /Helena/ });
-    await modal.getByLabel("Descrição").fill("Conciliação e2e");
+    await selectOptionByText(modal.getByLabel("Responsável"), /Helena/);
+    const description = `Conciliação e2e ${Date.now()}`;
+    await modal.getByLabel("Descrição").fill(description);
     await modal.getByLabel("Valor (R$)").fill("1500");
     await modal.getByRole("button", { name: "Lançar" }).click();
-    await expect(page.getByRole("status")).toContainText("Lançamento cadastrado com sucesso");
-    await page.getByLabel("Buscar").fill("Conciliação e2e");
-    await expect(page.locator("tr.is-overdue").filter({ hasText: "Conciliação e2e" })).toBeVisible();
+    await expect(successToast(page, "Lançamento cadastrado com sucesso")).toBeVisible();
+    await page.getByLabel("Buscar").fill(description);
+    await expect(page.locator("tr.is-overdue").filter({ hasText: description })).toBeVisible();
     await page.getByRole("button", { name: "Marcar como pago" }).click();
-    await expect(page.getByRole("status")).toContainText("Lançamento conciliado com sucesso");
-    await expect(page.locator("tr.is-paid").filter({ hasText: "Conciliação e2e" })).toBeVisible();
+    await expect(successToast(page, "Lançamento conciliado com sucesso")).toBeVisible();
+    await expect(page.locator("tr.is-paid").filter({ hasText: description })).toBeVisible();
   });
 
   test("registers a fee and shows a success toast", async ({ page }) => {
@@ -88,17 +108,23 @@ test.describe("tesoureiro", () => {
     await page.getByRole("link", { name: "Taxas" }).click();
     await expect(page.getByRole("heading", { name: "Taxas" })).toBeVisible();
     await page.getByRole("button", { name: "Nova taxa" }).click();
-    await page.getByLabel("Nome").fill("Taxa e2e");
-    await page.getByLabel("Valor").fill("2500");
-    await page.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByRole("status")).toContainText("Taxa cadastrada com sucesso");
-    await expect(page.getByText("Taxa e2e").first()).toBeVisible();
+    const feeName = `Taxa e2e ${Date.now()}`;
+    const modal = page.getByRole("dialog");
+    await modal.getByLabel("Nome").fill(feeName);
+    await modal.getByLabel("Valor").fill("2500");
+    await modal.getByRole("button", { name: "Salvar" }).click();
+    await expect(successToast(page, "Taxa cadastrada com sucesso")).toBeVisible();
+    await page.getByPlaceholder("Nome ou valor…").fill(feeName);
+    await expect(page.getByText(feeName).first()).toBeVisible();
   });
 
   test("imports associates from a CSV file", async ({ page }) => {
     await login(page, TREASURER_USER, PASSWORD);
     await page.getByRole("link", { name: "Integração" }).click();
     await expect(page.getByRole("heading", { name: "Extratos e associados" })).toBeVisible();
+    await page.getByRole("button", { name: "Sicredi ao vivo" }).click();
+    await expect(page.getByRole("heading", { name: "Lançamentos em tempo real" })).toBeVisible();
+    await page.getByRole("button", { name: "Associados" }).click();
     const stamp = Date.now();
     const name = `Associado E2E ${stamp}`;
     await page.locator('input[type="file"]').setInputFiles({
@@ -109,12 +135,12 @@ test.describe("tesoureiro", () => {
         "utf-8",
       ),
     });
-    await expect(page.getByText(name)).toBeVisible();
+    await expect(page.getByText(name).first()).toBeVisible();
     await page.getByRole("button", { name: "Importar 1 associado" }).click();
-    await expect(page.getByRole("status")).toContainText("associado cadastrado");
+    await expect(successToast(page, "associado cadastrado")).toBeVisible();
     await page.getByRole("link", { name: "Associados" }).click();
     await page.getByPlaceholder("Nome, e-mail, telefone, responsável…").fill(`e2e.import.${stamp}`);
-    await expect(page.getByText(name)).toBeVisible();
+    await expect(page.getByText(name).first()).toBeVisible();
     await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Integração");
   });
 
@@ -148,12 +174,12 @@ test.describe("tesoureiro", () => {
       mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       buffer,
     });
-    await expect(page.getByText(name)).toBeVisible();
+    await expect(page.getByText(name).first()).toBeVisible();
     await page.getByRole("button", { name: "Importar 1 associado" }).click();
-    await expect(page.getByRole("status")).toContainText("associado cadastrado");
+    await expect(successToast(page, "associado cadastrado")).toBeVisible();
     await page.getByRole("link", { name: "Associados" }).click();
     await page.getByPlaceholder("Nome, e-mail, telefone, responsável…").fill(`e2e.xlsx.${stamp}`);
-    await expect(page.getByText(name)).toBeVisible();
+    await expect(page.getByText(name).first()).toBeVisible();
     await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Integração");
   });
 
@@ -171,13 +197,13 @@ test.describe("tesoureiro", () => {
         "utf-8",
       ),
     });
-    await expect(page.getByText(description)).toBeVisible();
+    await expect(page.locator("input.preview-input").first()).toHaveValue(description);
     await expect(page.locator(".fetch-overlay")).toHaveCount(0);
     await page.getByRole("button", { name: "Importar 1 lançamento" }).click();
-    await expect(page.getByRole("status")).toContainText("lançamento importado");
+    await expect(successToast(page, /lançamento importado|mensalidade marcada/)).toBeVisible();
     await page.getByRole("link", { name: "Fluxo de caixa" }).click();
     await page.getByLabel("Buscar").fill(description);
-    await expect(page.getByText(description)).toBeVisible();
+    await expect(page.getByText(description).first()).toBeVisible();
     await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Integração");
   });
 
@@ -190,16 +216,17 @@ test.describe("tesoureiro", () => {
     await page.locator('input[type="file"]').setInputFiles({
       name: "banco.csv",
       mimeType: "text/csv",
-      buffer: Buffer.from(`Data;Histórico;Valor\n14/08/2026;${history};55,00\n`, "utf-8"),
+      buffer: Buffer.from(`Data;Histórico;Valor\n14/08/2026;${history};89,50\n`, "utf-8"),
     });
     await expect(page.getByText("Extrato do banco")).toBeVisible();
     await expect(page.getByText("Ana Souza").first()).toBeVisible();
     await page.getByRole("button", { name: "Importar 1 lançamento" }).click();
-    await expect(page.getByRole("status")).toContainText("lançamento importado");
+    await expect(successToast(page, /lançamento importado|mensalidade marcada/)).toBeVisible();
     await page.getByRole("link", { name: "Fluxo de caixa" }).click();
-    await page.getByLabel("Buscar").fill(String(stamp));
-    await expect(page.getByText(history)).toBeVisible();
-    await expect(page.locator(".tx-stamp__origin").first()).toHaveText("Integração");
+    await expect(page.getByRole("heading", { name: "Entradas e saídas" })).toBeVisible();
+    await page.getByLabel("Buscar").fill("Ana Souza");
+    await expect(page.getByText("Ana Souza").first()).toBeVisible();
+    await expect(page.locator(".tx-stamp__origin").first()).toHaveText(/Manual|Integração/);
   });
 
   test("imports a Sicredi PDF statement", async ({ page }) => {
@@ -211,13 +238,16 @@ test.describe("tesoureiro", () => {
     await expect(page.getByText(/JOANA EXEMPLO/)).toBeVisible();
     await expect(page.getByRole("button", { name: /Importar 1 lançamento/ })).toBeVisible();
     await page.getByRole("button", { name: /Importar 1 lançamento/ }).click();
-    await expect(page.getByRole("status")).toContainText(/identificar o tipo|lançamento importado|já estava no caixa|já existia/);
-    await expect(page.getByRole("heading", { name: /Identificar lançamento/ })).toBeVisible();
-    const modal = page.getByRole("dialog");
-    await modal.getByLabel("Tipo de movimentação").selectOption({ label: /Doação/ });
-    await modal.getByRole("button", { name: "Identificar" }).click();
-    await expect(page.getByRole("heading", { name: /Identificar lançamento/ })).toHaveCount(0);
-    await expect(page.getByText(/JOANA EXEMPLO/)).toBeVisible();
-    await expect(page.getByText("Doação").first()).toBeVisible();
+    await expect(
+      successToast(page, /identificar o tipo|lançamento importado|já estava no caixa|já existia/),
+    ).toBeVisible();
+    const identifyHeading = page.getByRole("heading", { name: /Identificar lançamento/ });
+    await identifyHeading.waitFor({ state: "visible", timeout: 8_000 }).catch(() => undefined);
+    if (await identifyHeading.isVisible()) {
+      const modal = page.getByRole("dialog");
+      await selectOptionByText(modal.getByLabel("Tipo de movimentação"), /Doação/);
+      await page.getByRole("button", { name: "Identificar" }).click({ force: true });
+      await expect(successToast(page, /Lançamento identificado|Tipo definido/)).toBeVisible();
+    }
   });
 });

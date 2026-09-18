@@ -39,10 +39,7 @@ export default function Fees() {
   const [attempted, setAttempted] = useState(false);
 
   const fees = list.data ?? [];
-  const filtered = useMemo(
-    () => fees.filter((fee) => matchesQuery(query, [fee.name, brl(fee.amount)])),
-    [fees, query],
-  );
+  const filtered = useMemo(() => fees.filter((fee) => matchesQuery(query, [fee.name, brl(fee.amount)])), [fees, query]);
   const listing = usePagedList(filtered, query);
 
   function openCreate() {
@@ -115,7 +112,7 @@ export default function Fees() {
       <PageHeader
         kicker="Cadastros"
         title="Taxas"
-        subtitle="Nome e valor das taxas do grupo, como mensalidade, registro da UEB e acampamento."
+        subtitle="Tabela oficial da mensalidade (base, extra de não sócio, pontualidade e atraso). Outras taxas do grupo continuam neste cadastro."
         actions={
           <button className="btn btn-primary" type="button" onClick={openCreate}>
             Nova taxa
@@ -128,11 +125,7 @@ export default function Fees() {
           <FilterBar>
             <label className="field">
               <span>Buscar</span>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Nome ou valor…"
-              />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nome ou valor…" />
             </label>
           </FilterBar>
           <ListingResults fetching={list.loading} filtering={listing.busy} fetchLabel="Atualizando taxas…">

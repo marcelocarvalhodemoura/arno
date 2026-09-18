@@ -1,0 +1,6 @@
+npx lint-staged
+cd application
+unset PLAYWRIGHT_BROWSERS_PATH
+npm run test:unit
+npm run test:int
+npm run test:e2e

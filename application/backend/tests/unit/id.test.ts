@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { id, isUuidV7, uuidv7 } from "../../src/id.js";
+import { id, isUuidV7, uuidv7 } from "../../src/shared/id.js";
 
 describe("uuidv7", () => {
   it("generates RFC 9562 version 7 identifiers", () => {

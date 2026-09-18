@@ -5,12 +5,14 @@ import {
   FaAngleLeft,
   FaAngleRight,
   FaChartLine,
+  FaCalendarCheck,
   FaFileImport,
   FaFlag,
   FaHome,
   FaListAlt,
   FaPercentage,
   FaReceipt,
+  FaCog,
   FaSignOutAlt,
   FaUserShield,
   FaUsers,
@@ -19,6 +21,7 @@ import type { UserRole } from "@shared";
 import logo from "../assets/arno_logo.png";
 import { useAuth } from "../context/AuthContext";
 import { MONTHS } from "../lib/format";
+import { duration, ease } from "../lib/motion";
 import "../layout.css";
 
 const SIDEBAR_KEY = "arno.sidebar-collapsed";
@@ -32,10 +35,12 @@ const links: {
 }[] = [
   { to: "/", label: "Painel", icon: FaHome, end: true, roles: ["admin"] },
   { to: "/fluxo", label: "Fluxo de caixa", icon: FaChartLine, roles: ["admin", "tesoureiro"] },
+  { to: "/mensalidades", label: "Mensalidades", icon: FaCalendarCheck, roles: ["admin", "tesoureiro"] },
   { to: "/tipos", label: "Tipos de movimentação", icon: FaListAlt, roles: ["admin", "tesoureiro"] },
   { to: "/taxas", label: "Taxas", icon: FaPercentage, roles: ["admin", "tesoureiro"] },
   { to: "/projetos", label: "Projetos financeiros", icon: FaFlag, roles: ["admin"] },
   { to: "/relatorios", label: "Relatório fiscal", icon: FaReceipt, roles: ["admin"] },
+  { to: "/configuracoes", label: "Configurações", icon: FaCog, roles: ["admin"] },
   { to: "/associados", label: "Associados", icon: FaUsers, roles: ["admin", "tesoureiro"] },
   { to: "/usuarios", label: "Usuários", icon: FaUserShield, roles: ["admin"] },
   { to: "/integracao", label: "Integração", icon: FaFileImport, roles: ["admin", "tesoureiro"] },
@@ -154,7 +159,7 @@ export default function Layout({ year, month, setYear, setMonth }: Period) {
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: duration.base, ease }}
             >
               <Outlet context={{ year, month, setYear, setMonth }} />
             </motion.div>
