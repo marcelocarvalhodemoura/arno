@@ -1,11 +1,10 @@
 import { pool } from "../shared/db.js";
-import { lateMonthlyFee, onTimeMonthlyFee } from "../mensalidades/fee-table.js";
-import { dueDayOf } from "../mensalidades/mensalidades.js";
 import { id } from "../shared/id.js";
 import { mailConfigured } from "./mail.js";
 import { kickOutbox } from "./outbox.js";
 import { isMensalidadeName } from "../statement/statement.js";
 import type { DatabaseShape, Transaction } from "../shared/types.js";
+import { composeNotifyMessage } from "./templates.js";
 import { whatsappStatus } from "./whatsapp.js";
 
 export type NotifyKind = "charge" | "receipt";
@@ -20,22 +19,6 @@ export type NotifyDelivery = {
   error?: string;
 };
 
-const MONTH_NAMES = [
-  "",
-  "janeiro",
-  "fevereiro",
-  "março",
-  "abril",
-  "maio",
-  "junho",
-  "julho",
-  "agosto",
-  "setembro",
-  "outubro",
-  "novembro",
-  "dezembro",
-];
-
 export function notifyStatus() {
   return {
     email: mailConfigured(),
@@ -49,16 +32,6 @@ export function configuredNotifyChannels(): NotifyChannel[] {
   if (status.email) channels.push("email");
   if (status.whatsapp) channels.push("whatsapp");
   return channels;
-}
-
-function brl(amount: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount);
-}
-
-function formatDate(iso: string) {
-  const [year, month, day] = iso.slice(0, 10).split("-");
-  if (!year || !month || !day) return iso;
-  return `${day}/${month}/${year}`;
 }
 
 function emailsOf(db: DatabaseShape, memberId?: string) {
@@ -97,38 +70,6 @@ function phonesOf(db: DatabaseShape, memberId?: string) {
   return list;
 }
 
-function messageFor(db: DatabaseShape, tx: Transaction, kind: NotifyKind, who: string) {
-  const group = db.settings.groupName || "Grupo Escoteiro Arno Friedrich";
-  const member = tx.memberId ? db.members.find((item) => item.id === tx.memberId) : undefined;
-  const month = Number(tx.date.slice(5, 7));
-  const year = tx.date.slice(0, 4);
-  const monthLabel = MONTH_NAMES[month] ?? tx.date;
-  if (kind === "receipt") {
-    const subject = `Comprovante de pagamento · ${group}`;
-    const body =
-      `Olá, ${who}.\n\n` +
-      `A tesouraria do ${group} confirma o recebimento de ${brl(tx.amount)} referente a “${tx.description}”, em ${formatDate(tx.date)}.\n` +
-      (member ? `Associado: ${member.name}.\n` : "") +
-      `\nEste recado é um comprovante interno da tesouraria.\n` +
-      `Obrigado.`;
-    return { subject, body };
-  }
-  const subject = `Cobrança de mensalidade · ${monthLabel} ${year}`;
-  const dueDay = dueDayOf(db);
-  const discountNote =
-    member && !member.clubeLtc
-      ? ` Pague até o dia ${dueDay} para garantir o desconto de ${brl(onTimeMonthlyFee(member))}; após o dia ${dueDay} o valor é ${brl(lateMonthlyFee(member))}.`
-      : "";
-  const body =
-    `Olá, ${who}.\n\n` +
-    `A tesouraria do ${group} registra a mensalidade de ${monthLabel} de ${year}` +
-    (member ? ` do associado ${member.name}` : "") +
-    ` no valor de ${brl(tx.amount)}, com vencimento em ${formatDate(tx.date)}.${discountNote}\n\n` +
-    `O pagamento pode ser feito por Pix na conta do grupo. Se já pagou, desconsidere este recado.\n` +
-    `Dúvidas: responda este e-mail ou fale com a tesouraria.`;
-  return { subject, body };
-}
-
 async function recordOutbox(row: {
   kind: NotifyKind;
   channel: NotifyChannel;
@@ -138,14 +79,15 @@ async function recordOutbox(row: {
   to: string;
   subject: string;
   body: string;
+  html?: string;
   error?: string;
   userId: string;
 }) {
   const rowId = id();
   await pool.query(
     `INSERT INTO message_outbox (
-       id, kind, channel, status, member_id, transaction_id, to_address, subject, body, error, sent_at, created_by, next_attempt_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
+       id, kind, channel, status, member_id, transaction_id, to_address, subject, body, html_body, error, sent_at, created_by, next_attempt_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())`,
     [
       rowId,
       row.kind,
@@ -156,6 +98,7 @@ async function recordOutbox(row: {
       row.to,
       row.subject,
       row.body,
+      row.html ?? null,
       row.error ?? null,
       row.status === "sent" ? new Date().toISOString() : null,
       row.userId,
@@ -200,7 +143,7 @@ export async function notifyTransaction(
         continue;
       }
       for (const target of targets) {
-        const { subject, body } = messageFor(db, tx, kind, target.name);
+        const message = composeNotifyMessage(db, tx, kind, target.name);
         const rowId = await recordOutbox({
           kind,
           channel,
@@ -208,8 +151,9 @@ export async function notifyTransaction(
           memberId: tx.memberId,
           transactionId: tx.id,
           to: target.email,
-          subject,
-          body,
+          subject: message.subject,
+          body: message.text,
+          html: message.html,
           userId,
         });
         deliveries.push({ id: rowId, kind, channel, status: "queued", to: target.email });
@@ -241,7 +185,7 @@ export async function notifyTransaction(
         continue;
       }
       for (const target of targets) {
-        const { subject, body } = messageFor(db, tx, kind, target.name);
+        const message = composeNotifyMessage(db, tx, kind, target.name);
         const rowId = await recordOutbox({
           kind,
           channel,
@@ -249,8 +193,8 @@ export async function notifyTransaction(
           memberId: tx.memberId,
           transactionId: tx.id,
           to: target.phone,
-          subject,
-          body,
+          subject: message.subject,
+          body: message.text,
           userId,
         });
         deliveries.push({ id: rowId, kind, channel, status: "queued", to: target.phone });

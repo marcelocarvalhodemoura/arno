@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import type { Transporter } from "nodemailer";
+import { logoFilePath, LOGO_CID } from "./templates.js";
 
 export type MailSendResult = {
   ok: boolean;
@@ -55,7 +57,7 @@ async function getTransporter() {
   return transporter;
 }
 
-export async function sendMail(to: string, subject: string, text: string): Promise<MailSendResult> {
+export async function sendMail(to: string, subject: string, text: string, html?: string): Promise<MailSendResult> {
   if (!to.trim()) return { ok: false, skipped: true, error: "Destinatário sem e-mail" };
   if (process.env.MAIL_MOCK === "1") return { ok: true, skipped: false };
   if (!mailConfigured()) {
@@ -63,11 +65,17 @@ export async function sendMail(to: string, subject: string, text: string): Promi
   }
   try {
     const mailer = await getTransporter();
+    const logoPath = logoFilePath();
     await mailer.sendMail({
       from: mailFrom(),
       to,
       subject,
       text,
+      ...(html?.trim() ? { html } : {}),
+      attachments:
+        html?.trim() && existsSync(logoPath)
+          ? [{ filename: "arno_logo.png", path: logoPath, cid: LOGO_CID }]
+          : undefined,
     });
     return { ok: true, skipped: false };
   } catch (error) {

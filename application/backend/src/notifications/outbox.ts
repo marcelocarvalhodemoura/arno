@@ -12,6 +12,7 @@ type OutboxRow = {
   to_address: string;
   subject: string;
   body: string;
+  html_body: string | null;
   attempts: number;
   error: string | null;
 };
@@ -88,7 +89,7 @@ export async function claimQueued(limit: number): Promise<OutboxRow[]> {
          FOR UPDATE SKIP LOCKED
          LIMIT $1
        )
-       RETURNING m.id, m.kind, m.channel, m.status, m.to_address, m.subject, m.body, m.attempts, m.error`,
+       RETURNING m.id, m.kind, m.channel, m.status, m.to_address, m.subject, m.body, m.html_body, m.attempts, m.error`,
       [size],
     );
     await client.query("COMMIT");
@@ -118,7 +119,7 @@ export async function deliverRow(row: OutboxRow) {
   const channel = row.channel as NotifyChannel;
   const sent =
     channel === "email"
-      ? await sendMail(row.to_address, row.subject, row.body)
+      ? await sendMail(row.to_address, row.subject, row.body, row.html_body ?? undefined)
       : await sendWhatsAppText(row.to_address, `${row.subject}\n\n${row.body}`);
 
   if (sent.ok) {
