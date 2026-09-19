@@ -7,12 +7,32 @@ Repositório com as duas frentes do projeto do grupo (43/RS).
 | `site/`        | Site institucional público                             | React + TypeScript + Vite (estático) |
 | `application/` | Sistema de tesouraria (área administrativa, com login) | React + Node.js/Express + PostgreSQL |
 
+## Como rodar (site + tesouraria)
+
+Na raiz do repositório, um comando sobe o site institucional, a API e a interface da tesouraria:
+
+```bash
+npm install
+npm run install:all
+# na primeira vez: cp application/.env.example application/.env e preencha as senhas
+yarn dev
+# equivalente: npm run dev
+```
+
+| URL                                                    | O que abre         |
+| ------------------------------------------------------ | ------------------ |
+| [http://127.0.0.1:5180](http://127.0.0.1:5180)         | site institucional |
+| [http://127.0.0.1:5174](http://127.0.0.1:5174)         | tesouraria (login) |
+| [http://127.0.0.1:4000/api](http://127.0.0.1:4000/api) | API da tesouraria  |
+
+O `dev` também sobe o Postgres da tesouraria (`npm run db:up`). Só o site: `npm run dev:site`. Só a tesouraria: `npm run dev:app`.
+
 ## Site institucional
 
 ```bash
 cd site
 npm install
-npm run dev     # desenvolvimento
+npm run dev     # desenvolvimento (porta 5180)
 npm run build   # gera site/dist para publicação
 ```
 

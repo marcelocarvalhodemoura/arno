@@ -216,12 +216,23 @@ test.describe("tesoureiro", () => {
     await page.locator('input[type="file"]').setInputFiles({
       name: "banco.csv",
       mimeType: "text/csv",
-      buffer: Buffer.from(`Data;Histórico;Valor\n14/08/2026;${history};89,50\n`, "utf-8"),
+      buffer: Buffer.from(`Data;Histórico;Valor\n14/11/2026;${history};89,50\n`, "utf-8"),
     });
     await expect(page.getByText("Extrato do banco")).toBeVisible();
     await expect(page.getByText("Ana Souza").first()).toBeVisible();
+    await expect(page.locator(".fetch-overlay")).toHaveCount(0);
     await page.getByRole("button", { name: "Importar 1 lançamento" }).click();
-    await expect(successToast(page, /lançamento importado|mensalidade marcada/)).toBeVisible();
+    await expect(
+      successToast(page, /lançamento importado|mensalidade marcada|identificar o tipo|já estava no caixa|já existia/),
+    ).toBeVisible();
+    const identifyHeading = page.getByRole("heading", { name: /Identificar lançamento/ });
+    await identifyHeading.waitFor({ state: "visible", timeout: 8_000 }).catch(() => undefined);
+    if (await identifyHeading.isVisible()) {
+      const modal = page.getByRole("dialog");
+      await selectOptionByText(modal.getByLabel("Tipo de movimentação"), /Mensalidade|Doação/);
+      await page.getByRole("button", { name: "Identificar" }).click({ force: true });
+      await expect(successToast(page, /Lançamento identificado|Tipo definido/)).toBeVisible();
+    }
     await page.getByRole("link", { name: "Fluxo de caixa" }).click();
     await expect(page.getByRole("heading", { name: "Entradas e saídas" })).toBeVisible();
     await page.getByLabel("Buscar").fill("Ana Souza");

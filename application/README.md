@@ -50,6 +50,8 @@ npm run db:up
 
 ## Como rodar a aplicação
 
+Pela raiz do repositório (`yarn dev`) sobe o site e a tesouraria juntos. Só esta pasta:
+
 ```bash
 npm install
 npm run db:up

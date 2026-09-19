@@ -2,13 +2,20 @@
   "private": true,
   "scripts": {
     "prepare": "husky",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "install:all": "npm install --prefix site && npm install --prefix application",
+    "db:up": "npm run db:up --prefix application",
+    "dev": "npm run db:up && concurrently -n site,tesouraria -c magenta,cyan \"npm run dev --prefix site\" \"npm run dev --prefix application\"",
+    "dev:site": "npm run dev --prefix site",
+    "dev:app": "npm run db:up && npm run dev --prefix application",
+    "build": "npm run build --prefix site && npm run build --prefix application"
   },
   "dependencies": {
     "nodemailer": "^10.0.10"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.2",
+    "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
     "prettier": "^3.6.2"
